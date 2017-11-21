@@ -1,9 +1,9 @@
 // TODO: once we'll have client commons load it from there instead of node modules (currently it's leads to two copies of this packages on client)
 import Promise from 'pinkie';
 import COMMAND from '../../browser/connection/command';
+import STATUS from '../../browser/connection/status';
 
-
-const HEARTBEAT_INTERVAL = 30 * 1000;
+const HEARTBEAT_INTERVAL = 2 * 1000;
 
 var allowInitScriptExecution = false;
 
@@ -19,7 +19,9 @@ function sendXHR (url, createXHR, method = 'GET', data = null) {
         xhr.onreadystatechange = () => {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200)
+                    /*eslint-disable no-restricted-globals*/
                     resolve(xhr.responseText ? JSON.parse(xhr.responseText) : '');
+                    /*eslint-enable no-restricted-globals*/
                 else
                     reject('disconnected');
             }
@@ -36,9 +38,19 @@ function isCurrentLocation (url) {
 
 //API
 export function startHeartbeat (heartbeatUrl, createXHR) {
-    sendXHR(heartbeatUrl, createXHR);
+    function heartbeat () {
+        sendXHR(heartbeatUrl, createXHR)
+            .then(status => {
+                if (status.code === STATUS.closing && !isCurrentLocation(status.url)) {
+                    stopInitScriptExecution();
+                    document.location = status.url;
+                }
+            });
+    }
 
-    window.setInterval(() => sendXHR(heartbeatUrl, createXHR), HEARTBEAT_INTERVAL);
+    window.setInterval(heartbeat, HEARTBEAT_INTERVAL);
+
+    heartbeat();
 }
 
 function executeInitScript (initScriptUrl, createXHR) {
@@ -50,9 +62,9 @@ function executeInitScript (initScriptUrl, createXHR) {
             if (!res.code)
                 return null;
 
-            /* eslint-disable no-eval */
+            /* eslint-disable no-eval,  no-restricted-globals*/
             return sendXHR(initScriptUrl, createXHR, 'POST', JSON.stringify(eval(res.code)));
-            /* eslint-enable no-eval */
+            /* eslint-enable no-eval, no-restricted-globals */
         })
         .then(() => {
             window.setTimeout(() => executeInitScript(initScriptUrl, createXHR), 1000);

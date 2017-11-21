@@ -13,6 +13,7 @@ import MESSAGE from '../errors/runtime/message';
 
 const DEFAULT_SELECTOR_TIMEOUT  = 10000;
 const DEFAULT_ASSERTION_TIMEOUT = 3000;
+const DEFAULT_PAGE_LOAD_TIMEOUT = 3000;
 
 
 export default class Runner extends EventEmitter {
@@ -30,8 +31,8 @@ export default class Runner extends EventEmitter {
             skipJsErrors:           false,
             quarantineMode:         false,
             debugMode:              false,
-            reportOutStream:        void 0,
-            selectorTimeout:        DEFAULT_SELECTOR_TIMEOUT
+            selectorTimeout:        DEFAULT_SELECTOR_TIMEOUT,
+            pageLoadTimeout:        DEFAULT_PAGE_LOAD_TIMEOUT
         };
     }
 
@@ -91,11 +92,11 @@ export default class Runner extends EventEmitter {
         return reporter.testCount - reporter.passed;
     }
 
-    _runTask (reporterPlugin, browserSet, tests, testedApp) {
+    _runTask (reporterPlugins, browserSet, tests, testedApp) {
         var completed         = false;
-        var task              = new Task(tests, browserSet.connections, this.proxy, this.opts);
-        var reporter          = new Reporter(reporterPlugin, task, this.opts.reportOutStream);
-        var completionPromise = this._getTaskResult(task, browserSet, reporter, testedApp);
+        var task              = new Task(tests, browserSet.browserConnectionGroups, this.proxy, this.opts);
+        var reporters         = reporterPlugins.map(reporter => new Reporter(reporter.plugin, task, reporter.outStream));
+        var completionPromise = this._getTaskResult(task, browserSet, reporters[0], testedApp);
 
         var setCompleted = () => {
             completed = true;
@@ -140,9 +141,20 @@ export default class Runner extends EventEmitter {
         return this;
     }
 
-    reporter (reporter, outStream) {
-        this.bootstrapper.reporter = reporter;
-        this.opts.reportOutStream  = outStream;
+    concurrency (concurrency) {
+        if (typeof concurrency !== 'number' || isNaN(concurrency) || concurrency < 1)
+            throw new GeneralError(MESSAGE.invalidConcurrencyFactor);
+
+        this.bootstrapper.concurrency = concurrency;
+
+        return this;
+    }
+
+    reporter (name, outStream) {
+        this.bootstrapper.reporters.push({
+            name,
+            outStream
+        });
 
         return this;
     }
@@ -173,12 +185,14 @@ export default class Runner extends EventEmitter {
         return this;
     }
 
-    run ({ skipJsErrors, quarantineMode, debugMode, selectorTimeout, assertionTimeout, speed = 1 } = {}) {
+    run ({ skipJsErrors, quarantineMode, debugMode, selectorTimeout, assertionTimeout, pageLoadTimeout, speed = 1, debugOnFail } = {}) {
         this.opts.skipJsErrors     = !!skipJsErrors;
         this.opts.quarantineMode   = !!quarantineMode;
         this.opts.debugMode        = !!debugMode;
+        this.opts.debugOnFail      = !!debugOnFail;
         this.opts.selectorTimeout  = selectorTimeout === void 0 ? DEFAULT_SELECTOR_TIMEOUT : selectorTimeout;
         this.opts.assertionTimeout = assertionTimeout === void 0 ? DEFAULT_ASSERTION_TIMEOUT : assertionTimeout;
+        this.opts.pageLoadTimeout  = pageLoadTimeout === void 0 ? DEFAULT_PAGE_LOAD_TIMEOUT : pageLoadTimeout;
 
         if (typeof speed !== 'number' || isNaN(speed) || speed < 0.01 || speed > 1)
             throw new GeneralError(MESSAGE.invalidSpeedValue);
@@ -186,10 +200,10 @@ export default class Runner extends EventEmitter {
         this.opts.speed = speed;
 
         var runTaskPromise = this.bootstrapper.createRunnableConfiguration()
-            .then(({ reporterPlugin, browserSet, tests, testedApp }) => {
+            .then(({ reporterPlugins, browserSet, tests, testedApp }) => {
                 this.emit('done-bootstrapping');
 
-                return this._runTask(reporterPlugin, browserSet, tests, testedApp);
+                return this._runTask(reporterPlugins, browserSet, tests, testedApp);
             });
 
         return this._createCancelablePromise(runTaskPromise);

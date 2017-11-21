@@ -34,9 +34,12 @@ export default {
     switchToMainWindow:         'switch-to-main-window',
     setNativeDialogHandler:     'set-native-dialog-handler',
     getNativeDialogHistory:     'get-native-dialog-history',
+    getBrowserConsoleMessages:  'get-browser-console-messages',
     setTestSpeed:               'set-test-speed',
+    setPageLoadTimeout:         'set-page-load-timeout',
     debug:                      'debug',
     assertion:                  'assertion',
     useRole:                    'useRole',
-    testDone:                   'test-done'
+    testDone:                   'test-done',
+    backupStorages:             'backup-storages',
 };

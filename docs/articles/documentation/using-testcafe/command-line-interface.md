@@ -13,6 +13,8 @@ testcafe [options] <browser-list-comma-separated> <file-or-glob ...>
 * [Browser List](#browser-list)
   * [Local Browsers](#local-browsers)
   * [Portable Browsers](#portable-browsers)
+  * [Testing in Headless Mode](#testing-in-headless-mode)
+  * [Using Chrome Device Emulation](#using-chrome-device-emulation)
   * [Remote Browsers](#remote-browsers)
   * [Browsers Accessed Through Browser Provider Plugins](#browsers-accessed-through-browser-provider-plugins)
   * [Starting browser with arguments](#starting-browser-with-arguments)
@@ -21,20 +23,23 @@ testcafe [options] <browser-list-comma-separated> <file-or-glob ...>
   * [-h, --help](#-h---help)
   * [-v, --version](#-v---version)
   * [-b, --list-browsers](#-b---list-browsers)
-  * [-r \<name\>, --reporter \<name\>](#-r-name---reporter-name)
+  * [-r \<name\[:file\],\[...\]\>, --reporter \<name\[:file\],\[...\]\>](#-r-namefile---reporter-namefile)
   * [-s \<path\>, --screenshots \<path\>](#-s-path---screenshots-path)
   * [-S, --screenshots-on-fails](#-s---screenshots-on-fails)
   * [-q, --quarantine-mode](#-q---quarantine-mode)
   * [-e, --skip-js-errors](#-e---skip-js-errors)
+  * [-c \<n\>, --concurrency \<n\>](#-c-n---concurrency-n)
   * [-t \<name\>, --test \<name\>](#-t-name---test-name)
   * [-T \<pattern\>, --test-grep \<pattern\>](#-t-pattern---test-grep-pattern)
   * [-f \<name\>, --fixture \<name\>](#-f-name---fixture-name)
   * [-F \<pattern\>, --fixture-grep \<pattern\>](#-f-pattern---fixture-grep-pattern)
   * [-a \<command\>, --app \<command\>](#-a-command---app-command)
   * [-d, --debug-mode](#-d---debug-mode)
+  * [--debug-on-fail](#--debug-on-fail)
   * [--app-init-delay \<ms\>](#--app-init-delay-ms)
   * [--selector-timeout \<ms\>](#--selector-timeout-ms)
   * [--assertion-timeout \<ms\>](#--assertion-timeout-ms)
+  * [--page-load-timeout \<ms\>](#--page-load-timeout-ms)
   * [--proxy \<host\>](#--proxy-host)
   * [--ports \<port1,port2\>](#--ports-port1port2)
   * [--hostname \<name\>](#--hostname-name)
@@ -55,7 +60,7 @@ The `browser-list-comma-separated` argument specifies the list of browsers (sepa
 
 ### Local Browsers
 
-You can specify [locally installed browsers](common-concepts/browser-support.md#locally-installed-browsers) by using browser aliases or paths (with the `path:` prefix).
+You can specify [locally installed browsers](common-concepts//browsers/browser-support.md#locally-installed-browsers) by using browser aliases or paths (with the `path:` prefix).
 The list of all the available browsers can be obtained by calling the [--list-browsers](#-b---list-browsers) command.
 
 The following example demonstrates how to run a test in several browsers.
@@ -73,15 +78,49 @@ testcafe all tests/sample-fixture.js
 
 ### Portable Browsers
 
-You can specify [portable browsers](common-concepts/browser-support.md#portable-browsers) by using paths to the browser's executable file (with the `path:` prefix), for example:
+You can specify [portable browsers](common-concepts/browsers/browser-support.md#portable-browsers) by using paths to the browser's executable file (with the `path:` prefix), for example:
 
 ```sh
 testcafe path:d:\firefoxportable\firefoxportable.exe tests/sample-fixture.js
 ```
 
+If the path contains spaces, surround it with backticks and additionally surround the whole parameter including the keyword in quotation marks.
+
+On Windows `cmd.exe`, the default command prompt, use double quotation marks.
+
+```sh
+testcafe "path:`C:\Program Files (x86)\Firefox Portable\firefox.exe`" tests/sample-fixture.js
+```
+
+On `Unix` shells like `bash`, `zsh`, `csh` (on macOS, Linux, Windows Subsystem for Linux) and Windows PowerShell, prefer single quotation marks.
+
+```sh
+testcafe 'path:`C:\Program Files (x86)\Firefox Portable\firefox.exe`' tests/sample-fixture.js
+```
+
+### Testing in Headless Mode
+
+To run tests in the headless mode in Google Chrome or Firefox, use the `:headless` postfix:
+
+```sh
+testcafe "firefox:headless" tests/sample-fixture.js
+```
+
+For details, see [Testing in Headless Mode](common-concepts/browsers/testing-in-headless-mode.md).
+
+### Using Chrome Device Emulation
+
+To run tests in Chrome device emulation mode, specify `:emulation` and [device parameters](common-concepts/browsers/using-chrome-device-emulation.md#emulator-parameters).
+
+```sh
+testcafe "chrome:emulation:device=iphone 6" tests/sample-fixture.js
+```
+
+To learn more, see [Using Chrome Device Emulation](common-concepts/browsers/using-chrome-device-emulation.md)
+
 ### Remote Browsers
 
-To run tests in a [browser on a remote device](common-concepts/browser-support.md#browsers-on-remote-devices), specify `remote` as a browser alias.
+To run tests in a [browser on a remote device](common-concepts/browsers/browser-support.md#browsers-on-remote-devices), specify `remote` as a browser alias.
 
 ```sh
 testcafe remote tests/sample-fixture.js
@@ -95,13 +134,16 @@ testcafe remote:3 tests/sample-fixture.js
 
 TestCafe will provide URLs to open in required browsers on your remote device.
 
+> If you run tests [concurrently](#-c-n---concurrency-n),
+> specify the total number of instances of all browsers after the `remote:` keyword.
+
 You can also use the [--qr-code](#--qr-code) option to display QR-codes that represent the same URLs.
 Scan the QR-codes by using the device on which you are going to test your application.
 As a result, the browsers will be connected to TestCafe and tests will start.
 
 ### Browsers Accessed Through Browser Provider Plugins
 
-To run tests in [cloud browsers](common-concepts/browser-support.md#browsers-in-cloud-testing-services) or [other browsers](common-concepts/browser-support.md#nonconventional-browsers) accessed through a [browser provider plugin](../extending-testcafe/browser-provider-plugin/),
+To run tests in [cloud browsers](common-concepts/browsers/browser-support.md#browsers-in-cloud-testing-services) or [other browsers](common-concepts/browsers/browser-support.md#nonconventional-browsers) accessed through a [browser provider plugin](../extending-testcafe/browser-provider-plugin/README.md),
 specify a browser alias that consists of the `{browser-provider-name}` prefix and the name of a browser itself (the latter can be omitted); for example, `saucelabs:Chrome@52.0:Windows 8.1`.
 
 ```sh
@@ -110,13 +152,29 @@ testcafe "saucelabs:Chrome@52.0:Windows 8.1" tests/sample-fixture.js
 
 ### Starting browser with arguments
 
-If you need to pass arguments for the specified browser, write them right after browser alias. Surround the browser call and its arguments with quotation marks:
+If you need to pass arguments for the specified browser, write them right after browser alias. Surround the browser call and its arguments with quotation marks.
+
+On Windows `cmd.exe`, the default command prompt, use double quotation marks.
 
 ```sh
 testcafe "chrome --start-fullscreen" tests/sample-fixture.js
 ```
 
-You can also specify arguments for portable browsers. If a path to a browser contains spaces, the path should be surrounded with backticks:
+On `Unix` shells like `bash`, `zsh`, `csh` (on macOS, Linux, Windows Subsystem for Linux) and Windows PowerShell, prefer single quotation marks.
+
+```sh
+testcafe 'chrome --start-fullscreen' tests/sample-fixture.js
+```
+
+You can also specify arguments for portable browsers. If a path to a browser contains spaces, the path should be surrounded with backticks.
+
+For Unix shells and Windows PowerShell:
+
+```sh
+testcafe 'path:`/Users/TestCafe/Apps/Google Chrome.app` --start-fullscreen' tests/sample-fixture.js
+```
+
+For `cmd.exe`:
 
 ```sh
 testcafe "path:`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe` --start-fullscreen" tests/sample-fixture.js
@@ -169,13 +227,13 @@ testcafe --version
 
 ### -b, --list-browsers
 
-Lists aliases of the [local browsers](common-concepts/browser-support.md#locally-installed-browsers) available on your computer.
+Lists aliases of the [local browsers](common-concepts/browsers/browser-support.md#locally-installed-browsers) available on your computer.
 
 ```sh
 testcafe --list-browsers
 ```
 
-### -r \<name\>, --reporter \<name\>
+### -r \<name\[:file\],\[...\]\>, --reporter \<name\[:file\],\[...\]\>
 
 Specifies the name of a [built-in](common-concepts/reporters.md) or [custom reporter](../extending-testcafe/reporter-plugin/README.md) that will be used to generate test reports.
 
@@ -193,12 +251,19 @@ testcafe all tests/sample-fixture.js -r my-reporter
 
 The generated test report will be displayed in the command prompt window.
 
-If you need to save the report to an external file, you can redirect the command output stream to the file
-by using the > redirection operator and specifying the report file path.
+If you need to save the report to an external file, specify the file path after the report name.
 
 ```sh
-testcafe all tests/sample-fixture.js > tests/test-results.txt
+testcafe all tests/sample-fixture.js -r json:report.json
 ```
+
+You can also use multiple reporters in a single test run. List them separated by commas.
+
+```sh
+testcafe all tests/sample-fixture.js -r spec,xunit:report.xml
+```
+
+Note that only one reporter can write to `stdout`. All other reporters must output to files.
 
 ### -s \<path\>, --screenshots \<path\>
 
@@ -249,7 +314,22 @@ For example, the following command runs tests from the specified file and forces
 testcafe ie tests/sample-fixture.js -e
 ```
 
-### -t \<name\>,  --test \<name\>
+### -c \<n\>, --concurrency \<n\>
+
+Specifies that tests should run concurrently.
+
+TestCafe will open `n` instances of the same browser thus creating a pool of browser instances.
+Tests will run concurrently against this pool, i.e. each test will run in the first free instance.
+
+To learn more about concurrent test execution, see [Concurrent Test Execution](common-concepts/concurrent-test-execution.md).
+
+The following example shows how to run tests in three Chrome instances.
+
+```sh
+testcafe -c 3 chrome tests/sample-fixture.js
+```
+
+### -t \<name\>, --test \<name\>
 
 TestCafe will run a test with the specified name.
 
@@ -312,6 +392,16 @@ In the footer, a status bar is displayed in which you can resume test execution 
 > If the test you run in the debugging mode contains a [test hook](../test-api/test-code-structure.md#test-hooks),
 > it will be paused within this hook before the first action.
 
+You can also use the **Unlock page** switch in the footer to unlock the tested page and interact with its elements.
+
+### --debug-on-fail
+
+Specifies whether to automatically enter the [debug mode](#-d---debug-mode) when a test fails.
+
+If this option is enabled, TestCafe pauses the test at the moment it fails. This allows you to explore the tested page and determine the cause of the fail.
+
+When you are done, click the **Finish** button in the footer to end test execution.
+
 ### --app-init-delay \<ms\>
 
 Specifies the amount of time, in milliseconds, allowed for an application launched using the [--app](#-a-command---app-command) option to initialize.
@@ -346,6 +436,22 @@ See [Smart Assertion Query Mechanism](../test-api/assertions/README.md#smart-ass
 
 ```sh
 testcafe ie my-tests --assertion-timeout 10000
+```
+
+### --page-load-timeout \<ms\>
+
+Specifies the amount of time, in milliseconds, passed after the `DOMContentLoaded` event, within which TestCafe waits for the `window.load` event to fire.
+
+After the timeout passes or the `window.load` event is raised (whichever happens first), TestCafe starts the test.
+
+> Note that the `DOMContentLoaded` event is raised after the HTML document is loaded and parsed, while `window.load` is raised after all stylesheets, images and subframes are loaded. That is why `window.load` is fired after the `DOMContentLoaded` event with a certain delay.
+
+**Default value**: `3000`
+
+You can set the page load timeout to `0` to skip waiting for the `window.load` event.
+
+```sh
+testcafe ie my-tests --page-load-timeout 0
 ```
 
 ### --proxy \<host\>

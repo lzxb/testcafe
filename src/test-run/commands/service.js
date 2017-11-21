@@ -23,13 +23,20 @@ export class HideAssertionRetriesStatusCommand {
 }
 
 export class SetBreakpointCommand {
-    constructor () {
-        this.type = TYPE.setBreakpoint;
+    constructor (isTestError) {
+        this.type        = TYPE.setBreakpoint;
+        this.isTestError = isTestError;
     }
 }
 
 export class TestDoneCommand {
     constructor () {
         this.type = TYPE.testDone;
+    }
+}
+
+export class BackupStoragesCommand {
+    constructor () {
+        this.type = TYPE.backupStorages;
     }
 }

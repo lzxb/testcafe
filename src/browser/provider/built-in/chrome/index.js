@@ -1,21 +1,9 @@
-import browserTools from 'testcafe-browser-tools';
 import OS from 'os-family';
 import getRuntimeInfo from './runtime-info';
 import getConfig from './config';
 import { start as startLocalChrome, stop as stopLocalChrome } from './local-chrome';
 import * as cdp from './cdp';
-
-
-/*eslint-disable no-undef*/
-function getWindowDimensionsInfo () {
-    return {
-        width:  window.innerWidth,
-        height: window.innerHeight
-    };
-}
-/*eslint-enable no-undef*/
-
-const GET_WINDOW_DIMENSIONS_INFO_SCRIPT = getWindowDimensionsInfo.toString();
+import { GET_WINDOW_DIMENSIONS_INFO_SCRIPT } from '../../utils/client-functions';
 
 
 export default {
@@ -36,7 +24,8 @@ export default {
 
         runtimeInfo.viewportSize = await this.runInitScript(browserId, GET_WINDOW_DIMENSIONS_INFO_SCRIPT);
 
-        await cdp.createClient(runtimeInfo);
+        if (runtimeInfo.config.headless || runtimeInfo.config.emulation)
+            await cdp.createClient(runtimeInfo);
 
         this.openedBrowsers[browserId] = runtimeInfo;
     },
@@ -47,7 +36,7 @@ export default {
         if (cdp.isHeadlessTab(runtimeInfo))
             await cdp.closeTab(runtimeInfo);
         else
-            await browserTools.close(browserId);
+            await this.closeLocalBrowser(browserId);
 
         if (OS.mac || runtimeInfo.config.headless)
             await stopLocalChrome(runtimeInfo);
@@ -80,6 +69,7 @@ export default {
         var { config, client } = this.openedBrowsers[browserId];
 
         return {
+            hasCloseBrowser:                true,
             hasResizeWindow:                !!client && (config.emulation || config.headless),
             hasTakeScreenshot:              !!client,
             hasCanResizeWindowToDimensions: false,

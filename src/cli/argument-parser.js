@@ -1,4 +1,4 @@
-import { resolve, join as pathJoin } from 'path';
+import { resolve, join as pathJoin, dirname } from 'path';
 import { Command } from 'commander';
 import Promise from 'pinkie';
 import dedent from 'dedent';
@@ -87,7 +87,7 @@ export default class CLIArgumentParser {
             .description(CLIArgumentParser._getDescription())
 
             .option('-b, --list-browsers [provider]', 'output the aliases for local browsers or browsers available through the specified browser provider')
-            .option('-r, --reporter <name>', 'specify the reporter type to use')
+            .option('-r, --reporter <name[:outputFile][,...]>', 'specify the reporters and optionally files where reports are saved')
             .option('-s, --screenshots <path>', 'enable screenshot capturing and specify the path to save the screenshots to')
             .option('-S, --screenshots-on-fails', 'take a screenshot whenever a test fails')
             .option('-q, --quarantine-mode', 'enable the quarantine mode')
@@ -98,9 +98,12 @@ export default class CLIArgumentParser {
             .option('-f, --fixture <name>', 'run only fixtures with the specified name')
             .option('-F, --fixture-grep <pattern>', 'run only fixtures matching the specified pattern')
             .option('-a, --app <command>', 'launch the tested app using the specified command before running tests')
+            .option('-c, --concurrency <number>', 'run tests concurrently')
+            .option('--debug-on-fail', 'pause the test if it fails')
             .option('--app-init-delay <ms>', 'specify how much time it takes for the tested app to initialize')
             .option('--selector-timeout <ms>', 'set the amount of time within which selectors make attempts to obtain a node to be returned')
             .option('--assertion-timeout <ms>', 'set the amount of time within which assertion should pass')
+            .option('--page-load-timeout <ms>', 'set the amount of time within which TestCafe waits for the `window.load` event to fire on page load before proceeding to the next test action')
             .option('--speed <factor>', 'set the speed of test execution (0.01 ... 1)')
             .option('--ports <port1,port2>', 'specify custom port numbers')
             .option('--hostname <name>', 'specify the hostname')
@@ -170,9 +173,22 @@ export default class CLIArgumentParser {
         }
     }
 
+    _parsePageLoadTimeout () {
+        if (this.opts.pageLoadTimeout) {
+            assertType(is.nonNegativeNumberString, null, 'Page load timeout', this.opts.pageLoadTimeout);
+
+            this.opts.pageLoadTimeout = parseInt(this.opts.pageLoadTimeout, 10);
+        }
+    }
+
     _parseSpeed () {
         if (this.opts.speed)
             this.opts.speed = parseFloat(this.opts.speed);
+    }
+
+    _parseConcurrency () {
+        if (this.opts.concurrency)
+            this.concurrency = parseInt(this.opts.concurrency, 10);
     }
 
     _parsePorts () {
@@ -191,6 +207,35 @@ export default class CLIArgumentParser {
 
         this.browsers = splitQuotedText(browsersArg, ',')
             .filter(browser => browser && this._filterAndCountRemotes(browser));
+    }
+
+    async _parseReporters () {
+        if (!this.opts.reporter) {
+            this.opts.reporters = [];
+            return;
+        }
+
+        const reporters = this.opts.reporter.split(',');
+
+        this.opts.reporters = reporters.map(reporter => {
+            const separatorIndex = reporter.indexOf(':');
+
+            if (separatorIndex < 0)
+                return { name: reporter };
+
+            const name    = reporter.substring(0, separatorIndex);
+            const outFile = reporter.substring(separatorIndex + 1);
+
+            return { name, outFile };
+        });
+
+        for (const reporter of this.opts.reporters) {
+            if (reporter.outFile) {
+                reporter.outFile = resolve(this.cwd, reporter.outFile);
+
+                await ensureDir(dirname(reporter.outFile));
+            }
+        }
     }
 
     async _convertDirsToGlobs (fileList) {
@@ -260,14 +305,17 @@ export default class CLIArgumentParser {
         this._parseFilteringOptions();
         this._parseSelectorTimeout();
         this._parseAssertionTimeout();
+        this._parsePageLoadTimeout();
         this._parseAppInitDelay();
         this._parseSpeed();
         this._parsePorts();
         this._parseBrowserList();
+        this._parseConcurrency();
 
         await Promise.all([
             this._parseScreenshotsPath(),
-            this._parseFileList()
+            this._parseFileList(),
+            this._parseReporters()
         ]);
     }
 }

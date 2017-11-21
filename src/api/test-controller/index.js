@@ -24,7 +24,9 @@ import {
     SwitchToMainWindowCommand,
     SetNativeDialogHandlerCommand,
     GetNativeDialogHistoryCommand,
+    GetBrowserConsoleMessagesCommand,
     SetTestSpeedCommand,
+    SetPageLoadTimeoutCommand,
     UseRoleCommand
 } from '../../test-run/commands/actions';
 
@@ -238,6 +240,12 @@ export default class TestController {
         return this.testRun.executeCommand(new GetNativeDialogHistoryCommand(), callsite);
     }
 
+    _getBrowserConsoleMessages$ () {
+        var callsite = getCallsiteForMethod('getBrowserConsoleMessages');
+
+        return this.testRun.executeCommand(new GetBrowserConsoleMessagesCommand(), callsite);
+    }
+
     _expect$ (actual) {
         return new Assertion(actual, this);
     }
@@ -248,6 +256,10 @@ export default class TestController {
 
     _setTestSpeed$ (speed) {
         return this._enqueueCommand('setTestSpeed', SetTestSpeedCommand, { speed });
+    }
+
+    _setPageLoadTimeout$ (duration) {
+        return this._enqueueCommand('setPageLoadTimeout', SetPageLoadTimeoutCommand, { duration });
     }
 
     _useRole$ (role) {

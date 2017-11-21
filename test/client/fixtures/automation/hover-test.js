@@ -1,12 +1,13 @@
-var hammerhead   = window.getTestCafeModule('hammerhead');
-var browserUtils = hammerhead.utils.browser;
+var hammerhead       = window.getTestCafeModule('hammerhead');
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
 
 var testCafeAutomation = window.getTestCafeModule('testCafeAutomation');
 var HoverAutomation    = testCafeAutomation.Hover;
 var MouseOptions       = testCafeAutomation.get('../../test-run/commands/options').MouseOptions;
 
-var testCafeCore      = window.getTestCafeModule('testCafeCore');
-var position          = testCafeCore.get('./utils/position');
+var testCafeCore = window.getTestCafeModule('testCafeCore');
+var position     = testCafeCore.get('./utils/position');
 
 testCafeCore.preventRealEvents();
 
@@ -35,7 +36,7 @@ $(document).ready(function () {
         $('.' + TEST_ELEMENT_CLASS).remove();
     });
 
-    if (!browserUtils.isTouchDevice) {
+    if (!featureDetection.isTouchDevice) {
         asyncTest('check mouseover and mouseout event', function () {
             var $el1 = addInputElement('button', 'button1', 200, 200);
             var $el2 = addInputElement('button', 'button1', 400, 400);
@@ -56,14 +57,14 @@ $(document).ready(function () {
                 mouseOver2Raised = true;
             });
 
-            var firstHover = new HoverAutomation($el1[0], new MouseOptions());
+            var firstHover = new HoverAutomation($el1[0], new MouseOptions({ offsetX: 5, offsetY: 5 }));
 
             firstHover
                 .run()
                 .then(function () {
                     ok(mouseOver1Raised);
 
-                    var secondHover = new HoverAutomation($el2[0], new MouseOptions());
+                    var secondHover = new HoverAutomation($el2[0], new MouseOptions({ offsetX: 5, offsetY: 5 }));
 
                     return secondHover.run();
                 })
@@ -145,7 +146,7 @@ $(document).ready(function () {
                 $el[0].onmspointerover = pointerHandler;
             }
 
-            var hover = new HoverAutomation($el[0], new MouseOptions());
+            var hover = new HoverAutomation($el[0], new MouseOptions({ offsetX: 5, offsetY: 5 }));
 
             hover
                 .run()

@@ -3,7 +3,7 @@ import SelectorBuilder from '../../client-functions/selectors/selector-builder';
 import ClientFunctionBuilder from '../../client-functions/client-function-builder';
 import functionBuilderSymbol from '../../client-functions/builder-symbol';
 import Assignable from '../../utils/assignable';
-import { ActionOptions, ClickOptions, MouseOptions, TypeOptions } from './options';
+import { ActionOptions, ClickOptions, MouseOptions, TypeOptions, DragToElementOptions } from './options';
 
 import {
     actionOptions,
@@ -19,7 +19,8 @@ import {
 import { ActionSelectorError, SetNativeDialogHandlerCodeWrongTypeError } from '../../errors/test-run';
 import { APIError } from '../../errors/runtime';
 import { ExecuteClientFunctionCommand, ExecuteSelectorCommand } from './observation';
-
+import { executeJsExpression } from '../execute-js-expression';
+import { isJSExpression } from './utils';
 
 // Initializers
 function initSelector (name, val, skipVisibilityCheck) {
@@ -27,6 +28,9 @@ function initSelector (name, val, skipVisibilityCheck) {
         return val;
 
     try {
+        if (isJSExpression(val))
+            val = executeJsExpression(val.value, skipVisibilityCheck);
+
         var builder = new SelectorBuilder(val, { visibilityCheck: !skipVisibilityCheck }, { instantiation: 'Selector' });
 
         return builder.getCommand([]);
@@ -52,6 +56,10 @@ function initMouseOptions (name, val) {
 
 function initTypeOptions (name, val) {
     return new TypeOptions(val, true);
+}
+
+function initDragToElementOptions (name, val) {
+    return new DragToElementOptions(val, true);
 }
 
 function initDialogHandler (name, val) {
@@ -215,7 +223,7 @@ export class DragToElementCommand extends Assignable {
         return [
             { name: 'selector', init: initSelector, required: true },
             { name: 'destinationSelector', init: initSelector, required: true },
-            { name: 'options', type: actionOptions, init: initMouseOptions, required: true }
+            { name: 'options', type: actionOptions, init: initDragToElementOptions, required: true }
         ];
     }
 }
@@ -410,6 +418,12 @@ export class GetNativeDialogHistoryCommand {
     }
 }
 
+export class GetBrowserConsoleMessagesCommand {
+    constructor () {
+        this.type = TYPE.getBrowserConsoleMessages;
+    }
+}
+
 export class SetTestSpeedCommand extends Assignable {
     constructor (obj) {
         super(obj);
@@ -423,6 +437,23 @@ export class SetTestSpeedCommand extends Assignable {
     _getAssignableProperties () {
         return [
             { name: 'speed', type: setSpeedArgument, required: true }
+        ];
+    }
+}
+
+export class SetPageLoadTimeoutCommand extends Assignable {
+    constructor (obj) {
+        super(obj);
+
+        this.type     = TYPE.setPageLoadTimeout;
+        this.duration = null;
+
+        this._assignFrom(obj, true);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'duration', type: positiveIntegerArgument, required: true }
         ];
     }
 }

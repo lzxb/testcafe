@@ -10,8 +10,8 @@ import IframeNativeDialogTracker from './native-dialog-tracker/iframe';
 
 
 export default class IframeDriver extends Driver {
-    constructor (ids, options) {
-        super(ids, {}, {}, options);
+    constructor (testRunId, options) {
+        super(testRunId, {}, {}, options);
 
         this.lastParentDriverMessageId = null;
         this.parentDriverLink          = new ParentDriverLink(window.parent);
@@ -21,6 +21,10 @@ export default class IframeDriver extends Driver {
     // Errors handling
     _onJsError () {
         // NOTE: do nothing because hammerhead sends js error to the top window directly
+    }
+
+    _onConsoleMessage () {
+        // NOTE: do nothing because hammerhead sends console messages to the top window directly
     }
 
     // Messaging between drivers
@@ -39,10 +43,13 @@ export default class IframeDriver extends Driver {
                             return;
 
                         this.lastParentDriverMessageId = msg.id;
-                        this.speed                     = msg.testSpeed;
 
-                        this.parentDriverLink.confirmMessageReceived(msg.id);
-                        this._onCommand(msg.command);
+                        this.readyPromise.then(() => {
+                            this.speed = msg.testSpeed;
+
+                            this.parentDriverLink.confirmMessageReceived(msg.id);
+                            this._onCommand(msg.command);
+                        });
                     }
 
                     if (msg.type === MESSAGE_TYPE.setNativeDialogHandler) {

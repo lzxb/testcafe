@@ -157,7 +157,7 @@ test('Click button', async t => {
     await t.click('#btn');
 });
 
-test('Click without offset options', async t=> {
+test('Click without offset options', async t => {
     await t.click('#div');
 });
 
@@ -200,6 +200,10 @@ test('Drag to element with incorrect selector', async t => {
 
 test('Drag to element with incorrect destinationSelector', async t => {
     await t.dragToElement('#draggable-div-2', null);
+});
+
+test('Drag to element with destination offsets', async t => {
+    await t.dragToElement('#draggable-div-2', '#destination-div', {destinationOffsetX: 0, destinationOffsetY: 0})
 });
 
 test('Destination element selector returns text node', async t => {
@@ -666,11 +670,19 @@ test('Right click button', async t => {
 
 
 test('Select text in input', async t => {
-    await t.selectText('#input', 2, 4);
+    await t
+        .selectText('#input', 2, 4)
+        .selectText('#input', 2)
+        .selectText('#input');
 });
 
 test('Select content in textarea', async t => {
-    await t.selectTextAreaContent('#textarea', 0, 2, 1, 3);
+    await t
+        .selectTextAreaContent('#textarea', 0, 2, 1, 3)
+        .selectTextAreaContent('#textarea', 0, 2, 1)
+        .selectTextAreaContent('#textarea', 0, 2)
+        .selectTextAreaContent('#textarea', 1)
+        .selectTextAreaContent('#textarea');
 });
 
 test('Select editable content', async t => {
@@ -692,7 +704,7 @@ test('Take a screenshot in quarantine mode', async t => {
 
 
 test('Type text in input', async t => {
-    await t.typeText('#input', 'a', { replace: true });
+    await t.typeText('#input', 'a', {replace: true});
 });
 
 
@@ -733,4 +745,40 @@ test('Chaining callsites', async t => {
         .click('#btn2')
         .click('#error')
         .click('#btn3');
+});
+
+test('t.getBrowserConsoleMessages', async t => {
+    let messages = await t.getBrowserConsoleMessages();
+
+    await t
+        .expect(messages.error).eql(['error1'])
+        .expect(messages.warn).eql(['warn1'])
+        .expect(messages.log).eql(['log1'])
+        .expect(messages.info).eql(['info1'])
+
+        .click('#trigger-messages')
+
+        // Check the driver keeps the messages between page reloads
+        .click('#reload');
+
+    messages = await t.getBrowserConsoleMessages();
+
+    await t
+        .expect(messages.error).eql(['error1', 'error2'])
+        .expect(messages.warn).eql(['warn1', 'warn2'])
+        .expect(messages.log).eql(['log1', 'log2'])
+        .expect(messages.info).eql(['info1', 'info2']);
+});
+
+test('messages formatting', async t => {
+    // Several arguments
+    await t.eval(() => console.log('a', 1, null, void 0, ['b', 2], {c: 3}));
+
+    const messages = await t.getBrowserConsoleMessages();
+
+    await t
+        .expect(messages.log[0]).eql('a 1 null undefined b,2 [object Object]')
+        .expect(messages.info.length).eql(0)
+        .expect(messages.warn.length).eql(0)
+        .expect(messages.error.length).eql(0);
 });

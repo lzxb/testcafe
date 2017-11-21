@@ -408,11 +408,13 @@ describe('Test run commands', function () {
                 dragOffsetX:         10,
 
                 options: {
-                    offsetX:  23,
-                    offsetY:  32,
-                    caretPos: 2,
-                    speed:    0.5,
-                    dummy:    1,
+                    offsetX:            23,
+                    offsetY:            32,
+                    destinationOffsetX: 12,
+                    destinationOffsetY: 21,
+                    caretPos:           2,
+                    speed:              0.5,
+                    dummy:              1,
 
                     modifiers: {
                         ctrl:  true,
@@ -432,9 +434,12 @@ describe('Test run commands', function () {
                 destinationSelector: makeSelector('#destination'),
 
                 options: {
-                    offsetX: 23,
-                    offsetY: 32,
-                    speed:   0.5,
+                    offsetX:            23,
+                    offsetY:            32,
+                    destinationOffsetX: 12,
+                    destinationOffsetY: 21,
+                    speed:              0.5,
+
 
                     modifiers: {
                         ctrl:  true,
@@ -459,9 +464,11 @@ describe('Test run commands', function () {
                 destinationSelector: makeSelector('#destination'),
 
                 options: {
-                    offsetX: null,
-                    offsetY: null,
-                    speed:   null,
+                    offsetX:            null,
+                    offsetY:            null,
+                    destinationOffsetX: null,
+                    destinationOffsetY: null,
+                    speed:              null,
 
                     modifiers: {
                         ctrl:  false,
@@ -952,6 +959,19 @@ describe('Test run commands', function () {
             });
         });
 
+        it('Should create SetPageLoadTimeoutCommand from object', function () {
+            var commandObj = {
+                type:     TYPE.setPageLoadTimeout,
+                duration: 3
+            };
+            var command    = createCommand(commandObj);
+
+            expect(JSON.parse(JSON.stringify(command))).eql({
+                type:     TYPE.setPageLoadTimeout,
+                duration: 3
+            });
+        });
+
         it('Should create AssertionCommand from object', function () {
             var commandObj = {
                 type:          TYPE.assertion,
@@ -998,6 +1018,65 @@ describe('Test run commands', function () {
                 message:       null,
 
                 options: { timeout: null }
+            });
+        });
+
+        it('Should process js expression as a Selector', function () {
+            var commandObj = {
+                type:     TYPE.click,
+                selector: {
+                    type:  'js-expr',
+                    value: "Selector('#yo')"
+                }
+            };
+
+            var command = createCommand(commandObj);
+
+            expect(JSON.parse(JSON.stringify(command))).eql({
+                type:     TYPE.click,
+                selector: makeSelector('#yo'),
+
+                options: {
+                    offsetX:  null,
+                    offsetY:  null,
+                    caretPos: null,
+                    speed:    null,
+
+                    modifiers: {
+                        ctrl:  false,
+                        alt:   false,
+                        shift: false,
+                        meta:  false
+                    }
+                }
+            });
+        });
+
+        it('Should process js expression as an assertion parameter', function () {
+            var commandObj = {
+                type:          TYPE.assertion,
+                assertionType: 'eql',
+
+                actual: {
+                    type:  'js-expr',
+                    value: '1 + 2'
+                },
+
+                expected: 1
+            };
+
+            var command = createCommand(commandObj);
+
+            expect(JSON.parse(JSON.stringify(command))).eql({
+                type:          TYPE.assertion,
+                assertionType: 'eql',
+                actual:        3,
+                expected:      1,
+                message:       null,
+
+                options: {
+                    timeout: null
+                }
             });
         });
     });
@@ -2540,6 +2619,39 @@ describe('Test run commands', function () {
             );
         });
 
+        it('Should validate SetPageLoadTimeoutCommand', function () {
+            assertThrow(
+                function () {
+                    return createCommand({
+                        type: TYPE.setPageLoadTimeout
+                    });
+                },
+                {
+                    isTestCafeError: true,
+                    type:            ERROR_TYPE.actionPositiveIntegerArgumentError,
+                    argumentName:    'duration',
+                    actualValue:     'undefined',
+                    callsite:        null
+                }
+            );
+
+            assertThrow(
+                function () {
+                    return createCommand({
+                        type:     TYPE.setPageLoadTimeout,
+                        duration: -1
+                    });
+                },
+                {
+                    isTestCafeError: true,
+                    type:            ERROR_TYPE.actionPositiveIntegerArgumentError,
+                    argumentName:    'duration',
+                    actualValue:     -1,
+                    callsite:        null
+                }
+            );
+        });
+
         it('Should validate AssertionСommand', function () {
             assertThrow(
                 function () {
@@ -2623,6 +2735,71 @@ describe('Test run commands', function () {
                     optionName:      'timeout',
                     actualValue:     10.5,
                     callsite:        null
+                }
+            );
+
+            assertThrow(
+                function () {
+                    return createCommand({
+                        type:          TYPE.assertion,
+                        assertionType: 'ok',
+
+                        actual: {
+                            type:  'js-expr',
+                            value: 'invalid js code'
+                        }
+                    });
+                },
+                {
+                    isTestCafeError: true,
+                    argumentName:    'actual',
+                    actualValue:     'invalid js code',
+                    errMsg:          'Unexpected identifier',
+                    type:            ERROR_TYPE.assertionExecutableArgumentError,
+                    callsite:        null
+                }
+            );
+        });
+
+        it('Should validate js expression as Selector', function () {
+            assertThrow(
+                function () {
+                    return createCommand({
+                        type:     TYPE.click,
+                        selector: {
+                            type:  'js-expr',
+                            value: 'Selector()'
+                        }
+                    });
+                },
+                {
+                    isTestCafeError: true,
+                    type:            ERROR_TYPE.actionSelectorError,
+                    selectorName:    'selector',
+                    errMsg:          'Selector is expected to be initialized with a function, CSS selector string, another Selector, ' +
+                                     'node snapshot or a Promise returned by a Selector, but undefined was passed.',
+
+                    callsite: null
+                }
+            );
+
+            assertThrow(
+                function () {
+                    return createCommand({
+                        type:     TYPE.click,
+                        selector: {
+                            type:  'js-expr',
+                            value: 'yo'
+                        }
+                    });
+                },
+                {
+                    isTestCafeError: true,
+                    type:            ERROR_TYPE.actionSelectorError,
+                    selectorName:    'selector',
+                    errMsg:          'yo is not defined',
+
+                    callsite: null
                 }
             );
         });

@@ -5,7 +5,7 @@ interface ClientFunctionOptions {
      *  Contains functions, variables or objects used by the client function internally.
      *  Properties of the `dependencies` object will be added to the client function's scope as variables.
      */
-    dependencies?: {[key: string]: Function},
+    dependencies?: {[key: string]: any},
     /**
      * If you need to call a client function from a Node.js callback, assign the current test controller to the `boundTestRun` option.
      */
@@ -474,7 +474,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     filter(filterFn: (node: Element, idx: number) => boolean,
-           dependencies?: {[key: string]: Function}): Selector;
+           dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all descendants of all nodes in the matching set and filters them by `cssSelector`.
      *
@@ -491,7 +491,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     find(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-         dependencies?: {[key: string]: Function}): Selector;
+         dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all parents of all nodes in the matching set (first element in the set will be the closest parent).
      */
@@ -518,7 +518,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     parent(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-           dependencies?: {[key: string]: Function}): Selector;
+           dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all child elements (not nodes) of all nodes in the matching set.
      */
@@ -545,7 +545,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     child(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-          dependencies?: {[key: string]: Function}): Selector;
+          dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all sibling elements (not nodes) of all nodes in the matching set.
      */
@@ -572,7 +572,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     sibling(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-            dependencies?: {[key: string]: Function}): Selector;
+            dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all succeeding sibling elements (not nodes) of all nodes in the matching set.
      */
@@ -599,7 +599,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     nextSibling(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-                dependencies?: {[key: string]: Function}): Selector;
+                dependencies?: {[key: string]: any}): Selector;
     /**
      * Finds all preceding sibling elements (not nodes) of all nodes in the matching set.
      */
@@ -626,7 +626,7 @@ interface SelectorAPI {
      * @param dependencies - Predicate dependencies.
      */
     prevSibling(filterFn: (node: Element, idx: number, originNode: Element) => boolean,
-                dependencies?: {[key: string]: Function}): Selector;
+                dependencies?: {[key: string]: any}): Selector;
     /**
      * `true if` at least one matching element exists.
      */
@@ -693,7 +693,7 @@ interface RoleOptions {
      *
      * This option is useful if you store session-related data (like session ID) in the URL.
      */
-    preseveUrl?: boolean;
+    preserveUrl?: boolean;
 }
 
 
@@ -756,6 +756,23 @@ interface TypeActionOptions extends ClickActionOptions {
     paste?: boolean;
 }
 
+interface DragToElementOptions extends MouseActionOptions {
+    /**
+     * Mouse pointer X coordinate that defines a point where the dragToElement action is finished.
+     * If an offset is a positive integer, coordinates are calculated relative to the top-left corner of the destination element.
+     * If an offset is a negative integer, they are calculated relative to the bottom-right corner.
+     * By default, the dragToElement action is finished in the center of the destination element.
+     */
+    destinationOffsetX?: number;
+    /**
+     * Mouse pointer Y coordinate that defines a point where the dragToElement action is finished.
+     * If an offset is a positive integer, coordinates are calculated relative to the top-left corner of the destination element.
+     * If an offset is a negative integer, they are calculated relative to the bottom-right corner.
+     * By default, the dragToElement action is finished in the center of the destination element.
+     */
+    destinationOffsetY?: number;
+}
+
 interface ResizeToFitDeviceOptions {
     /**
      * `true` for portrait screen orientation; `false` for landscape.
@@ -780,6 +797,25 @@ interface NativeDialogHistoryItem {
      * from the main window or an `<iframe>`.
      */
     url: string;
+}
+
+interface BrowserConsoleMessages {
+    /**
+     * Messages output to the browser console by the console.log() method.
+     */
+    log: string[],
+    /**
+     * Warning messages output to the browser console by the console.warn() method.
+     */
+    warn: string[],
+    /**
+     * Error messages output to the browser console by the console.error() method.
+     */
+    error: string[],
+    /**
+     * Information messages output to the browser console by the console.info() method.
+     */
+    info: string[]
 }
 
 interface TestController {
@@ -844,7 +880,7 @@ interface TestController {
      */
     dragToElement(selector: string | Selector | NodeSnapshot | SelectorPromise | ((...args: any[]) => Node | Node[] | NodeList | HTMLCollection),
                   destinationSelector: string | Selector | NodeSnapshot | SelectorPromise | ((...args: any[]) => Node | Node[] | NodeList | HTMLCollection),
-                  options?: MouseActionOptions): TestControllerPromise;
+                  options?: DragToElementOptions): TestControllerPromise;
     /**
      * Types the specified text into an input element.
      *
@@ -864,8 +900,8 @@ interface TestController {
      * @param options - A set of options that provide additional parameters for the action.
      */
     selectText(selector: string | Selector | NodeSnapshot | SelectorPromise | ((...args: any[]) => Node | Node[] | NodeList | HTMLCollection),
-               startPos: number,
-               endPos: number,
+               startPos?: number,
+               endPos?: number,
                options?: ActionOptions): TestControllerPromise;
     /**
      * Selects `<textarea>` content.
@@ -878,10 +914,10 @@ interface TestController {
      * @param options
      */
     selectTextAreaContent(selector: string | Selector | NodeSnapshot | SelectorPromise | ((...args: any[]) => Node | Node[] | NodeList | HTMLCollection),
-                          startLine: number,
-                          startPos: number,
-                          endLine: number,
-                          endPos: number,
+                          startLine?: number,
+                          startPos?: number,
+                          endLine?: number,
+                          endPos?: number,
                           options?: ActionOptions): TestControllerPromise;
     /**
      * Performs selection within editable content
@@ -988,6 +1024,10 @@ interface TestController {
      */
     getNativeDialogHistory(): Promise<NativeDialogHistoryItem[]>;
     /**
+     * Returns an object that contains messages output to the browser console.
+     */
+    getBrowserConsoleMessages(): Promise<BrowserConsoleMessages>;
+    /**
      * Starts an assertion chain and specifies assertion actual value.
      *
      * @param actual - An actual value of the assertion.
@@ -1003,6 +1043,12 @@ interface TestController {
      * @param speed - Specifies the test speed. Must be a number between 1 (the fastest) and 0.01 (the slowest).
      */
     setTestSpeed(speed: number): TestControllerPromise;
+    /**
+     * Specifies the amount of time within which TestCafe waits for the `window.load` event to fire before starting the test.
+     *
+     * @param duration - Specifies the amount of time within which TestCafe waits for the `window.load` event to fire before starting the test.
+     */
+    setPageLoadTimeout(duration: number): TestControllerPromise;
     /**
      * Switches user role.
      *

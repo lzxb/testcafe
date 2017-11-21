@@ -325,19 +325,6 @@ export function getElementIndexInParent (parent, child) {
 
 }
 
-export function setUnselectableAttributeRecursive (el) {
-    if (isElementNode(el))
-        el.setAttribute('unselectable', 'on');
-
-    var child = el.firstChild;
-
-    while (child) {
-        setUnselectableAttributeRecursive(child);
-
-        child = child.nextSibling;
-    }
-}
-
 export function isTheSameNode (node1, node2) {
     //NOTE: Mozilla has not isSameNode method
     if (node1 && node2 && node1.isSameNode)
@@ -430,7 +417,7 @@ export function isIFrameWindowInDOM (win) {
 
     // NOTE: in Firefox and WebKit, frameElement is null for cross-domain iframes even if they are in the DOM.
     // But these browsers don't execute scripts in removed iframes, so we suppose that the iframe is in the DOM.
-    if ((browserUtils.isFirefox || browserUtils.isWebKit) && win.top !== win.self && !frameElement)
+    if ((browserUtils.isFirefox || browserUtils.isWebKit) && win.top !== win && !frameElement)
         return true;
 
     return !!(frameElement && frameElement.contentDocument);
@@ -439,7 +426,7 @@ export function isIFrameWindowInDOM (win) {
 export function isTopWindow (win) {
     try {
         //NOTE: MS Edge throws an exception when trying to access window.top from an iframe removed from DOM
-        return win.top === win.self;
+        return win.top === win;
     }
     catch (e) {
         return false;

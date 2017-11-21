@@ -8,6 +8,7 @@ import { Session } from 'testcafe-hammerhead';
 import TestRunDebugLog from './debug-log';
 import TestRunErrorFormattableAdapter from '../errors/test-run/formattable-adapter';
 import TestCafeErrorList from '../errors/error-list';
+import { executeJsExpression } from './execute-js-expression';
 import { PageLoadError, RoleSwitchInRoleInitializerError } from '../errors/test-run/';
 import BrowserManipulationQueue from './browser-manipulation-queue';
 import CLIENT_MESSAGES from './client-messages';
@@ -20,10 +21,11 @@ import testRunTracker from '../api/test-run-tracker';
 import ROLE_PHASE from '../role/phase';
 import TestRunBookmark from './bookmark';
 import ClientFunctionBuilder from '../client-functions/client-function-builder';
-
+import ReporterPluginHost from '../reporter/plugin-host';
+import BrowserConsoleMessages from './browser-console-messages';
 
 import { TakeScreenshotOnFailCommand } from './commands/browser-manipulation';
-import { SetNativeDialogHandlerCommand, SetTestSpeedCommand } from './commands/actions';
+import { SetNativeDialogHandlerCommand, SetTestSpeedCommand, SetPageLoadTimeoutCommand } from './commands/actions';
 
 
 import {
@@ -31,7 +33,8 @@ import {
     PrepareBrowserManipulationCommand,
     ShowAssertionRetriesStatusCommand,
     HideAssertionRetriesStatusCommand,
-    SetBreakpointCommand
+    SetBreakpointCommand,
+    BackupStoragesCommand
 } from './commands/service';
 
 import {
@@ -68,6 +71,9 @@ export default class TestRun extends Session {
         this.activeDialogHandler  = null;
         this.activeIframeSelector = null;
         this.speed                = this.opts.speed;
+        this.pageLoadTimeout      = this.opts.pageLoadTimeout;
+
+        this.consoleMessages = new BrowserConsoleMessages();
 
         this.pendingRequest   = null;
         this.pendingPageError = null;
@@ -88,7 +94,9 @@ export default class TestRun extends Session {
         this.resolveWaitForFileDownloadingPromise = null;
 
         this.debugging               = this.opts.debugMode;
+        this.debugOnFail             = this.opts.debugOnFail;
         this.disableDebugBreakpoints = false;
+        this.debugReporterPluginHost = new ReporterPluginHost({ noColors: false });
 
         this.browserManipulationQueue = new BrowserManipulationQueue(browserConnection, screenshotCapturer, warningLog);
 
@@ -116,6 +124,7 @@ export default class TestRun extends Session {
             testName:            JSON.stringify(this.test.name),
             fixtureName:         JSON.stringify(this.test.fixture.name),
             selectorTimeout:     this.opts.selectorTimeout,
+            pageLoadTimeout:     this.pageLoadTimeout,
             skipJsErrors:        this.opts.skipJsErrors,
             speed:               this.speed,
             dialogHandler:       JSON.stringify(this.activeDialogHandler)
@@ -126,6 +135,7 @@ export default class TestRun extends Session {
         return Mustache.render(IFRAME_TEST_RUN_TEMPLATE, {
             testRunId:       JSON.stringify(this.id),
             selectorTimeout: this.opts.selectorTimeout,
+            pageLoadTimeout: this.pageLoadTimeout,
             speed:           this.speed,
             dialogHandler:   JSON.stringify(this.activeDialogHandler)
         });
@@ -203,6 +213,9 @@ export default class TestRun extends Session {
             await this._runAfterHook();
         }
 
+        if (this.errs.length && this.debugOnFail)
+            await this._enqueueSetBreakpointCommand(null, this.debugReporterPluginHost.formatError(this.errs[0]));
+
         await this.executeCommand(new TestDoneCommand());
         this._addPendingPageErrorIfAny();
 
@@ -211,6 +224,14 @@ export default class TestRun extends Session {
         this.emit('done');
     }
 
+    _evaluate (code) {
+        try {
+            return executeJsExpression(code, false, this);
+        }
+        catch (err) {
+            return { err };
+        }
+    }
 
     // Errors
     _addPendingPageErrorIfAny () {
@@ -250,10 +271,16 @@ export default class TestRun extends Session {
         return this.executeCommand(new PrepareBrowserManipulationCommand(command.type), callsite);
     }
 
-    async _enqueueSetBreakpointCommand (callsite) {
-        debugLogger.showBreakpoint(this.id, this.browserConnection.userAgent, callsite);
+    async _enqueueBrowserConsoleMessagesCommand (command, callsite) {
+        await this._enqueueCommand(command, callsite);
 
-        this.debugging = await this._enqueueCommand(new SetBreakpointCommand(), callsite);
+        return this.consoleMessages.getCopy();
+    }
+
+    async _enqueueSetBreakpointCommand (callsite, error) {
+        debugLogger.showBreakpoint(this.id, this.browserConnection.userAgent, callsite, error);
+
+        this.debugging = await this._enqueueCommand(new SetBreakpointCommand(!!error), callsite);
     }
 
     _removeAllNonServiceTasks () {
@@ -325,6 +352,8 @@ export default class TestRun extends Session {
 
         var currentTaskRejectedByError = pageError && this._handlePageErrorStatus(pageError);
 
+        this.consoleMessages.concat(driverStatus.consoleMessages);
+
         if (!currentTaskRejectedByError && driverStatus.isCommandResult) {
             if (this.currentDriverTask.command.type === COMMAND_TYPE.testDone) {
                 this._resolveCurrentDriverTask();
@@ -366,6 +395,9 @@ export default class TestRun extends Session {
         else if (command.type === COMMAND_TYPE.setTestSpeed)
             this.speed = command.speed;
 
+        else if (command.type === COMMAND_TYPE.setPageLoadTimeout)
+            this.pageLoadTimeout = command.duration;
+
         else if (command.type === COMMAND_TYPE.debug)
             this.debugging = true;
     }
@@ -392,6 +424,9 @@ export default class TestRun extends Session {
         if (command.type === COMMAND_TYPE.wait)
             return delay(command.timeout);
 
+        if (command.type === COMMAND_TYPE.setPageLoadTimeout)
+            return null;
+
         if (command.type === COMMAND_TYPE.debug)
             return await this._enqueueSetBreakpointCommand(callsite);
 
@@ -400,6 +435,9 @@ export default class TestRun extends Session {
 
         if (command.type === COMMAND_TYPE.assertion)
             return this._executeAssertion(command, callsite);
+
+        if (command.type === COMMAND_TYPE.getBrowserConsoleMessages)
+            return await this._enqueueBrowserConsoleMessagesCommand(command, callsite);
 
         return this._enqueueCommand(command, callsite);
     }
@@ -414,9 +452,18 @@ export default class TestRun extends Session {
     }
 
     // Role management
+    async getStateSnapshot () {
+        var state = super.getStateSnapshot();
+
+        state.storages = await this.executeCommand(new BackupStoragesCommand());
+
+        return state;
+    }
+
     async switchToCleanRun () {
-        this.ctx        = Object.create(null);
-        this.fixtureCtx = Object.create(null);
+        this.ctx             = Object.create(null);
+        this.fixtureCtx      = Object.create(null);
+        this.consoleMessages = new BrowserConsoleMessages();
 
         this.useStateSnapshot(null);
 
@@ -430,6 +477,12 @@ export default class TestRun extends Session {
             var setSpeedCommand = new SetTestSpeedCommand({ speed: this.opts.speed });
 
             await this.executeCommand(setSpeedCommand);
+        }
+
+        if (this.pageLoadTimeout !== this.opts.pageLoadTimeout) {
+            var setPageLoadTimeoutCommand = new SetPageLoadTimeoutCommand({ duration: this.opts.pageLoadTimeout });
+
+            await this.executeCommand(setPageLoadTimeoutCommand);
         }
     }
 
@@ -463,7 +516,7 @@ export default class TestRun extends Session {
         await bookmark.init();
 
         if (this.currentRoleId)
-            this.usedRoleStates[this.currentRoleId] = this.getStateSnapshot();
+            this.usedRoleStates[this.currentRoleId] = await this.getStateSnapshot();
 
         var stateSnapshot = this.usedRoleStates[role.id] || await this._getStateSnapshotFromRole(role);
 

@@ -397,10 +397,17 @@ gulp.task('lint-docs', function () {
 
     var lintDocsAndExamples = globby([
         'docs/articles/**/*.md',
+        '!docs/articles/faq/**/*.md',
         '!docs/articles/documentation/recipes/**/*.md',
         'examples/**/*.md'
     ]).then(function (files) {
         return lintFiles(files, require('./.md-lint/docs.json'));
+    });
+
+    var lintFaq = globby([
+        'docs/articles/faq/**/*.md'
+    ]).then(function (files) {
+        return lintFiles(files, require('./.md-lint/faq.json'));
     });
 
     var lintRecipes = globby([
@@ -412,7 +419,7 @@ gulp.task('lint-docs', function () {
     var lintReadme    = lintFiles('README.md', require('./.md-lint/readme.json'));
     var lintChangelog = lintFiles('CHANGELOG.md', require('./.md-lint/changelog.json'));
 
-    return Promise.all([lintDocsAndExamples, lintReadme, lintChangelog, lintRecipes]);
+    return Promise.all([lintDocsAndExamples, lintReadme, lintChangelog, lintRecipes, lintFaq]);
 });
 
 gulp.task('clean-website', function () {
@@ -444,7 +451,14 @@ gulp.task('put-in-navigation', ['fetch-assets-repo'], function () {
         .pipe(gulp.dest('site/src/_data'));
 });
 
-gulp.task('prepare-website', ['put-in-articles', 'put-in-navigation', 'put-in-posts', 'lint-docs']);
+gulp.task('put-in-publications', ['fetch-assets-repo'], function () {
+    return gulp
+        .src('docs/publications/**/*')
+        .pipe(gulp.dest('site/src/_data'));
+});
+
+
+gulp.task('prepare-website', ['put-in-articles', 'put-in-navigation', 'put-in-posts', 'put-in-publications', 'lint-docs']);
 
 function buildWebsite (mode, cb) {
     var options = mode ? { stdio: 'inherit', env: { JEKYLL_ENV: mode } } : { stdio: 'inherit' };

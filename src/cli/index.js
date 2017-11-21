@@ -1,3 +1,4 @@
+import fs from 'fs';
 import chalk from 'chalk';
 import resolveCwd from 'resolve-cwd';
 import browserProviderPool from '../browser/provider/pool';
@@ -8,8 +9,53 @@ import log from './log';
 import remotesWizard from './remotes-wizard';
 import createTestCafe from '../';
 
+
+const TERMINATION_TYPES = {
+    sigint:   'sigint',
+    sigbreak: 'sigbreak',
+    shutdown: 'shutdown'
+};
+
+var showMessageOnExit = true;
+var exitMessageShown  = false;
+var exiting           = false;
+
+var handledSignalsCount = {
+    [TERMINATION_TYPES.sigint]:   0,
+    [TERMINATION_TYPES.sigbreak]: 0,
+    [TERMINATION_TYPES.shutdown]: 0
+};
+
+function exitHandler (terminationType) {
+    handledSignalsCount[terminationType]++;
+
+    if (showMessageOnExit && !exitMessageShown) {
+        exitMessageShown = true;
+
+        log.hideSpinner();
+        log.write('Stopping TestCafe...');
+        log.showSpinner();
+
+        process.on('exit', () => log.hideSpinner(true));
+    }
+
+    if (exiting || handledSignalsCount[terminationType] < 2)
+        return;
+
+    exiting = true;
+
+    exit(0);
+}
+
+function setupExitHandler () {
+    process.on('SIGINT', () => exitHandler(TERMINATION_TYPES.sigint));
+    process.on('SIGBREAK', () => exitHandler(TERMINATION_TYPES.sigbreak));
+
+    process.on('message', message => message === 'shutdown' && exitHandler(TERMINATION_TYPES.shutdown));
+}
+
 function exit (code) {
-    log.hideSpinner();
+    log.hideSpinner(true);
 
     // NOTE: give a process time to flush the output.
     // It's necessary in some environments.
@@ -47,16 +93,25 @@ async function runTests (argParser) {
     log.showSpinner();
 
     var testCafe       = await createTestCafe(opts.hostname, port1, port2);
+    var concurrency    = argParser.concurrency || 1;
     var remoteBrowsers = await remotesWizard(testCafe, argParser.remoteCount, opts.qrCode);
     var browsers       = argParser.browsers.concat(remoteBrowsers);
     var runner         = testCafe.createRunner();
     var failed         = 0;
+    var reporters      = argParser.opts.reporters.map(r => {
+        return {
+            name:      r.name,
+            outStream: r.outFile ? fs.createWriteStream(r.outFile) : void 0
+        };
+    });
+
+    reporters.forEach(r => runner.reporter(r.name, r.outStream));
 
     runner
         .useProxy(externalProxyHost)
         .src(argParser.src)
         .browsers(browsers)
-        .reporter(opts.reporter)
+        .concurrency(concurrency)
         .filter(argParser.filter)
         .screenshots(opts.screenshots, opts.screenshotsOnFails)
         .startApp(opts.app, opts.appInitDelay);
@@ -68,6 +123,7 @@ async function runTests (argParser) {
     }
 
     finally {
+        showMessageOnExit = false;
         await testCafe.close();
     }
 
@@ -113,6 +169,8 @@ function useLocalInstallation () {
     if (useLocalInstallation())
         return;
 
+    setupExitHandler(exitHandler);
+
     try {
         var argParser = new CliArgumentParser();
 
@@ -124,6 +182,7 @@ function useLocalInstallation () {
             await runTests(argParser);
     }
     catch (err) {
+        showMessageOnExit = false;
         error(err);
     }
 })();

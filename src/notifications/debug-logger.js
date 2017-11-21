@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { findIndex } from 'lodash';
-import logUpdate from 'log-update';
+import logUpdate from 'log-update-async-hook';
 import createStackFilter from '../errors/create-stack-filter';
 
 export default {
@@ -56,21 +56,23 @@ export default {
         this.debugLogging = false;
     },
 
-    showBreakpoint (testRunId, userAgent, callsite) {
+    showBreakpoint (testRunId, userAgent, callsite, testError) {
         if (!this.streamsOverridden)
             this._overrideStreams();
 
-        var callsiteStr = callsite.renderSync({
+        // NOTE: We do not have callsite for the raw API at the moment. Remove this check after
+        // the callsite format for the raw API will be implemented.
+        var callsiteStr = callsite ? callsite.renderSync({
             frameSize:   1,
             stackFilter: createStackFilter(Error.stackTraceLimit),
             stack:       false
-        });
+        }) : '';
 
         var frame = `\n` +
                     `----\n` +
                     `${userAgent}\n` +
-                    chalk.yellow('DEBUGGER PAUSE:') + `\n` +
-                    `${callsiteStr}\n` +
+                    chalk.yellow(testError ? 'DEBUGGER PAUSE ON FAILED TEST:' : 'DEBUGGER PAUSE:') + `\n` +
+                    `${testError ? testError : callsiteStr}\n` +
                     `----\n`;
 
         var message = { testRunId, frame };

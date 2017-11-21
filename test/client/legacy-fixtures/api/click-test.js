@@ -1,5 +1,6 @@
-var hammerhead   = window.getTestCafeModule('hammerhead');
-var browserUtils = hammerhead.utils.browser;
+var hammerhead       = window.getTestCafeModule('hammerhead');
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
 
 var testCafeLegacyRunner = window.getTestCafeModule('testCafeLegacyRunner');
 var ERROR_TYPE           = testCafeLegacyRunner.get('../test-run-error/type');
@@ -15,7 +16,7 @@ var stepIterator = new StepIterator();
 actionsAPI.init(stepIterator);
 
 var correctTestWaitingTime = function (time) {
-    if (browserUtils.isTouchDevice && browserUtils.isFirefox)
+    if (featureDetection.isTouchDevice && browserUtils.isFirefox)
         return time * 2;
 
     return time;
@@ -53,6 +54,12 @@ $(document).ready(function () {
             .addClass(type)
             .addClass(TEST_ELEMENT_CLASS)
             .appendTo('body');
+    };
+
+    var createOption = function (parent, text) {
+        return $('<option></option>').text(text)
+            .addClass(TEST_ELEMENT_CLASS)
+            .appendTo(parent);
     };
 
     var startNext = function () {
@@ -456,6 +463,26 @@ $(document).ready(function () {
             },
             function () {
                 ok(!exceptionRaised, 'should not throw an exception');
+            },
+            correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT)
+        );
+    });
+
+    asyncTest('click on an option element', function () {
+        var select = $('<select></select>')
+            .addClass(TEST_ELEMENT_CLASS)
+            .appendTo('body')[0];
+
+        createOption(select, 'opt1');
+
+        var option = createOption(select, 'opt2');
+
+        runAsyncTest(
+            function () {
+                actionsAPI.click([select, option]);
+            },
+            function () {
+                equal(select.selectedIndex, 1);
             },
             correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT)
         );

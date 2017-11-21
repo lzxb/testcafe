@@ -1,5 +1,6 @@
 import hammerhead from './deps/hammerhead';
 import ClickAutomation from './playback/click';
+import SelectChildClickAutomation from './playback/click/select-child';
 import DblClickAutomation from './playback/dblclick';
 import DragToOffsetAutomation from './playback/drag/to-offset';
 import DragToElementAutomation from './playback/drag/to-element';
@@ -23,6 +24,7 @@ import cursor from './cursor';
 
 
 exports.Click                 = ClickAutomation;
+exports.SelectChildClick      = SelectChildClickAutomation;
 exports.DblClick              = DblClickAutomation;
 exports.DragToOffset          = DragToOffsetAutomation;
 exports.DragToElement         = DragToElementAutomation;
@@ -45,7 +47,7 @@ exports.cursor                       = cursor;
 
 exports.get = require;
 
-Object.defineProperty(window, '%testCafeAutomation%', {
+hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%testCafeAutomation%', {
     enumerable:   false,
     configurable: false,
     writable:     false,

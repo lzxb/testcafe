@@ -2,27 +2,35 @@ import hammerhead from './deps/hammerhead';
 import Driver from './driver';
 import IframeDriver from './iframe-driver';
 import ScriptExecutionBarrier from './script-execution-barrier';
+import embeddingUtils from './embedding-utils';
 
 
-Object.defineProperty(window, '%testCafeDriver%', {
+hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%testCafeDriver%', {
     enumerable:   false,
     configurable: false,
     writable:     false,
     value:        Driver
 });
 
-Object.defineProperty(window, '%testCafeIframeDriver%', {
+hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%testCafeIframeDriver%', {
     enumerable:   false,
     configurable: false,
     writable:     false,
     value:        IframeDriver
 });
 
-Object.defineProperty(window, '%ScriptExecutionBarrier%', {
+hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%ScriptExecutionBarrier%', {
     enumerable:   false,
     configurable: false,
     writable:     false,
     value:        ScriptExecutionBarrier
+});
+
+hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%testCafeEmbeddingUtils%', {
+    enumerable:   false,
+    configurable: false,
+    writable:     false,
+    value:        embeddingUtils
 });
 
 /* eslint-disable no-undef */

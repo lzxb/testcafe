@@ -18,7 +18,8 @@ import {
     SwitchToIframeCommand,
     SwitchToMainWindowCommand,
     SetNativeDialogHandlerCommand,
-    SetTestSpeedCommand
+    SetTestSpeedCommand,
+    SetPageLoadTimeoutCommand
 } from './actions';
 
 import AssertionCommand from './assertion';
@@ -30,7 +31,7 @@ import {
     MaximizeWindowCommand
 } from './browser-manipulation';
 
-import { WaitCommand } from './observation';
+import { WaitCommand, DebugCommand } from './observation';
 
 
 // Create command from object
@@ -105,8 +106,14 @@ export default function createCommandFromObject (obj) {
         case TYPE.setTestSpeed:
             return new SetTestSpeedCommand(obj);
 
+        case TYPE.setPageLoadTimeout:
+            return new SetPageLoadTimeoutCommand(obj);
+
         case TYPE.assertion:
             return new AssertionCommand(obj);
+
+        case TYPE.debug:
+            return new DebugCommand(obj);
     }
 
     return null;

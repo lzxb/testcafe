@@ -1,5 +1,6 @@
-var hammerhead   = window.getTestCafeModule('hammerhead');
-var browserUtils = hammerhead.utils.browser;
+var hammerhead       = window.getTestCafeModule('hammerhead');
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
 
 var testCafeCore  = window.getTestCafeModule('testCafeCore');
 var domUtils      = testCafeCore.get('./utils/dom');
@@ -14,7 +15,7 @@ var initAutomation       = testCafeLegacyRunner.get('./init-automation');
 actionsAPI.ELEMENT_AVAILABILITY_WAITING_TIMEOUT = 400;
 
 var WAITING_TIMEOUT               = 3500;
-var TEST_COMPLETE_WAITING_TIMEOUT = browserUtils.isTouchDevice ? WAITING_TIMEOUT * 2 : WAITING_TIMEOUT;
+var TEST_COMPLETE_WAITING_TIMEOUT = featureDetection.isTouchDevice ? WAITING_TIMEOUT * 2 : WAITING_TIMEOUT;
 var ERROR_WAITING_TIMEOUT         = actionsAPI.ELEMENT_AVAILABILITY_WAITING_TIMEOUT + 50;
 
 var stepIterator = new StepIterator();
@@ -23,7 +24,7 @@ initAutomation();
 actionsAPI.init(stepIterator);
 
 var correctTestWaitingTime = function (time) {
-    if (browserUtils.isTouchDevice && browserUtils.isFirefox)
+    if (featureDetection.isTouchDevice && browserUtils.isFirefox)
         return time * 2;
 
     return time;
@@ -72,15 +73,33 @@ $(document).ready(function () {
         }, timeout);
     };
 
-    var checkSelection = function ($element, startNode, startOffset, endNode, endOffset) {
+    function checkOffsetsArray (actualOffset, offsets) {
+        for (var i = 0; i < offsets.length; i++) {
+            if (actualOffset === offsets[i])
+                return true;
+        }
+
+        return false;
+    }
+
+    var checkSelection = function ($element, startNode, startOffsets, endNode, endOffsets) {
         var curDocument = domUtils.findDocument($element[0]);
         var selection   = curDocument.getSelection();
 
         equal(domUtils.getActiveElement(), $element[0]);
         ok(domUtils.isTheSameNode(startNode, selection.anchorNode), 'startNode correct');
-        equal(selection.anchorOffset, startOffset, 'startOffset correct');
+
+        if (startOffsets.length)
+            ok(checkOffsetsArray(selection.anchorOffset, startOffsets), 'startOffset correct');
+        else
+            equal(selection.anchorOffset, startOffsets, 'startOffset correct');
+
         ok(domUtils.isTheSameNode(endNode, selection.focusNode), 'endNode correct');
-        equal(selection.focusOffset, endOffset, 'endOffset correct');
+
+        if (endOffsets.length)
+            ok(checkOffsetsArray(selection.focusOffset, endOffsets), 'endOffset correct');
+        else
+            equal(selection.focusOffset, endOffsets, 'endOffset correct');
     };
 
     var setInnerHTML = function ($element, innerHTML) {
@@ -179,8 +198,7 @@ $(document).ready(function () {
                 actionsAPI.select($el[0]);
             },
             function () {
-                checkSelection($el, $el[0].childNodes[0], 0, $el[0].childNodes[2], browserUtils.isFirefox ||
-                                                                                   browserUtils.isIE ? 8 : 7);
+                checkSelection($el, $el[0].childNodes[0], 0, $el[0].childNodes[2], [8, 7]);
             },
             correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT * 2)
         );
@@ -211,7 +229,7 @@ $(document).ready(function () {
                 if (browserUtils.isIE)
                     checkSelection($el, $el[0].childNodes[0], 12, $el[0].childNodes[2], 8);
                 else {
-                    checkSelection($el, $el[0].childNodes[2], browserUtils.isFirefox ? 8 : 7, $el[0].childNodes[0], 12);
+                    checkSelection($el, $el[0].childNodes[2], [8, 7], $el[0].childNodes[0], 12);
                     equal(textSelection.hasInverseSelection($el[0]), true, 'selection direction correct');
                 }
             },
@@ -275,7 +293,7 @@ $(document).ready(function () {
                 actionsAPI.select(node1, node2);
             },
             function () {
-                checkSelection($parent, node1, 0, node2, browserUtils.isIE || browserUtils.isFirefox ? 8 : 7);
+                checkSelection($parent, node1, 0, node2, [8, 7]);
             },
             correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT)
         );
@@ -338,8 +356,7 @@ $(document).ready(function () {
                 actionsAPI.select(el, node);
             },
             function () {
-                checkSelection($parent, $parent[0].childNodes[1].childNodes[0], 0, $parent[0].childNodes[8], browserUtils.isIE ||
-                                                                                                             browserUtils.isFirefox ? 13 : 9);
+                checkSelection($parent, $parent[0].childNodes[1].childNodes[0], 0, $parent[0].childNodes[8], [13, 9]);
             },
             correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT)
         );
@@ -355,13 +372,10 @@ $(document).ready(function () {
                 actionsAPI.select(node, el);
             },
             function () {
-                if (browserUtils.isIE) {
-                    checkSelection($parent, $parent[0].childNodes[1].childNodes[0], 0, $parent[0].childNodes[8], browserUtils.isIE ||
-                                                                                                                 browserUtils.isFirefox ? 13 : 9);
-                }
+                if (browserUtils.isIE)
+                    checkSelection($parent, $parent[0].childNodes[1].childNodes[0], 0, $parent[0].childNodes[8], 13);
                 else {
-                    checkSelection($parent, $parent[0].childNodes[8], browserUtils.isIE ||
-                                                                      browserUtils.isFirefox ? 13 : 9, $parent[0].childNodes[1].childNodes[0], 0);
+                    checkSelection($parent, $parent[0].childNodes[8], [13, 9], $parent[0].childNodes[1].childNodes[0], 0);
                     equal(textSelection.hasInverseSelection($parent[0]), true, 'selection direction correct');
                 }
             },
@@ -410,8 +424,7 @@ $(document).ready(function () {
                 actionsAPI.select($el1, $el2);
             },
             function () {
-                checkSelection($parent, $parent.find('del')[0].childNodes[0], browserUtils.isIE ||
-                                                                              browserUtils.isFirefox ? 0 : 9, $parent.find('a')[1].childNodes[0], 4);
+                checkSelection($parent, $parent.find('del')[0].childNodes[0], [0, 9], $parent.find('a')[1].childNodes[0], 4);
             },
             correctTestWaitingTime(TEST_COMPLETE_WAITING_TIMEOUT)
         );
@@ -427,13 +440,10 @@ $(document).ready(function () {
                 actionsAPI.select($el1, $el2);
             },
             function () {
-                if (browserUtils.isIE) {
-                    checkSelection($parent, $parent.find('del')[0].childNodes[0], browserUtils.isIE ||
-                                                                                  browserUtils.isFirefox ? 0 : 9, $parent.find('a')[1].childNodes[0], 4);
-                }
+                if (browserUtils.isIE)
+                    checkSelection($parent, $parent.find('del')[0].childNodes[0], 0, $parent.find('a')[1].childNodes[0], 4);
                 else {
-                    checkSelection($parent, $parent.find('a')[1].childNodes[0], 4, $parent.find('del')[0].childNodes[0], browserUtils.isIE ||
-                                                                                                                         browserUtils.isFirefox ? 0 : 9);
+                    checkSelection($parent, $parent.find('a')[1].childNodes[0], 4, $parent.find('del')[0].childNodes[0], [0, 9]);
                     equal(textSelection.hasInverseSelection($parent[0]), true, 'selection direction correct');
                 }
             },

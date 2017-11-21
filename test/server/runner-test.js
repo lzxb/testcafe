@@ -158,8 +158,26 @@ describe('Runner', function () {
                 });
         });
 
+        it('Should raise an error if several reporters are going to write to the stdout', function () {
+            return runner
+                .browsers(connection)
+                .reporter('json')
+                .reporter('xunit')
+                .src('test/server/data/test-suites/basic/testfile2.js')
+                .run()
+                .then(function () {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(function (err) {
+                    expect(err.message).eql('Multiple reporters attempting to write to stdout: "json, xunit". ' +
+                                            'Only one reporter can write to stdout.');
+                });
+        });
+
         it('Should fallback to the default reporter if reporter was not set', function () {
-            runner._runTask = function (reporterPlugin) {
+            runner._runTask = function (reporters) {
+                var reporterPlugin = reporters[0].plugin;
+
                 expect(reporterPlugin.reportFixtureStart).to.be.a('function');
                 expect(reporterPlugin.reportTestDone).to.be.a('function');
                 expect(reporterPlugin.reportTaskStart).to.be.a('function');
@@ -502,6 +520,36 @@ describe('Runner', function () {
                     expect(err.message).eql(incorrectSpeedErrorMessage);
                 });
         });
+
+        it('Should raise an error if concurrency option has wrong value', function () {
+            var incorrectConcurrencyFactorErrorMessage = 'The concurrency factor should be an integer greater or equal to 1.';
+
+            return testCafe
+                .createBrowserConnection()
+                .then(function (browserConnection) {
+                    return runner
+                        .browsers(browserConnection)
+                        .concurrency('yo');
+                })
+                .catch(function (err) {
+                    expect(err.message).eql(incorrectConcurrencyFactorErrorMessage);
+                })
+                .then(function () {
+                    return runner.concurrency(-1);
+                }).catch(function (err) {
+                    expect(err.message).eql(incorrectConcurrencyFactorErrorMessage);
+                })
+                .then(function () {
+                    return runner.concurrency(0.1);
+                }).catch(function (err) {
+                    expect(err.message).eql(incorrectConcurrencyFactorErrorMessage);
+                })
+                .then(function () {
+                    return runner.concurrency(0);
+                }).catch(function (err) {
+                    expect(err.message).eql(incorrectConcurrencyFactorErrorMessage);
+                });
+        });
     });
 
     describe('Regression', function () {
@@ -601,8 +649,8 @@ describe('Runner', function () {
             Task.prototype._createBrowserJobs = function () {
                 setTimeout(taskActionCallback.bind(this), TASK_ACTION_DELAY);
 
-                return this.browserConnections.map(function (bc) {
-                    return { browserConnection: bc };
+                return this.browserConnectionGroups.map(function (bcGroup) {
+                    return { browserConnections: bcGroup };
                 });
             };
 

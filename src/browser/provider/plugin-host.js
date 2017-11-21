@@ -51,6 +51,12 @@ export default class BrowserProviderPluginHost {
         connection.setProviderMetaInfo(message);
     }
 
+    async closeLocalBrowser (browserId) {
+        var connection = BrowserConnection.getById(browserId);
+
+        await connection.provider._closeLocalBrowser(browserId);
+    }
+
     // API
     // Browser control
     async openBrowser (/* browserId, pageUrl, browserName */) {
@@ -87,6 +93,7 @@ export default class BrowserProviderPluginHost {
 
     async hasCustomActionForBrowser (/* browserId */) {
         return {
+            hasCloseBrowser:                this.hasOwnProperty('closeBrowser'),
             hasResizeWindow:                this.hasOwnProperty('resizeWindow'),
             hasTakeScreenshot:              this.hasOwnProperty('takeScreenshot'),
             hasCanResizeWindowToDimensions: this.hasOwnProperty('canResizeWindowToDimensions'),

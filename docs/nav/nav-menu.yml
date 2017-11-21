@@ -21,13 +21,26 @@
   - name: Common Concepts
     url: /documentation/using-testcafe/common-concepts/README.md
     content:
-    - name: Browser Support
-      url: /documentation/using-testcafe/common-concepts/browser-support.md
+    - name: Browsers
+      url: /documentation/using-testcafe/common-concepts/browsers/README.md
+      content:
+      - name: Browser Support
+        url: /documentation/using-testcafe/common-concepts/browsers/browser-support.md
+      - name: Testing in Headless Mode
+        url: /documentation/using-testcafe/common-concepts/browsers/testing-in-headless-mode.md
+      - name: Using Chrome Device Emulation
+        url: /documentation/using-testcafe/common-concepts/browsers/using-chrome-device-emulation.md
+      - name: User Profiles
+        url: /documentation/using-testcafe/common-concepts/browsers/user-profiles.md
+    - name: Concurrent Test Execution
+      url: /documentation/using-testcafe/common-concepts/concurrent-test-execution.md
     - name: Reporters
       url: /documentation/using-testcafe/common-concepts/reporters.md
 - name: TEST API
   url: /documentation/test-api/README.md
   content:
+  - name: TypeScript Support
+    url: /documentation/test-api/typescript-support.md
   - name: Test Code Structure
     url: /documentation/test-api/test-code-structure.md
     content:
@@ -61,6 +74,8 @@
       url: /documentation/test-api/selecting-page-elements/selector-options.md
     - name: DOM Node State
       url: /documentation/test-api/selecting-page-elements/dom-node-state.md
+    - name: Framework-Specific Selectors
+      url: /documentation/test-api/selecting-page-elements/framework-specific-selectors.md
   - name: Actions
     url: /documentation/test-api/actions/README.md
     content:
@@ -114,6 +129,8 @@
     url: /documentation/test-api/working-with-iframes.md
   - name: Debugging
     url: /documentation/test-api/debugging.md
+  - name: Accessing Console Messages
+    url: /documentation/test-api/accessing-console-messages.md  
   - name: A-Z Index
     url: /documentation/test-api/a-z.md
 - name: EXTENDING TESTCAFE
@@ -140,10 +157,14 @@
       url: /documentation/recipes/debugging-with-chrome-dev-tools.md
     - name: Debugging with Visual Studio Code
       url: /documentation/recipes/debugging-with-visual-studio-code.md
+    - name: Finding Code Issues with Flow Type Checker
+      url: /documentation/recipes/finding-code-issues-with-flow-type-checker.md
     - name: Running Tests in Firefox and Chrome Using Travis CI
       url: /documentation/recipes/running-tests-in-firefox-and-chrome-using-travis-ci.md
     - name: Running Tests Using Travis CI and Sauce Labs
       url: /documentation/recipes/running-tests-using-travis-ci-and-sauce-labs.md
+    - name: Testing &lt;select&gt; Elements 
+      url: /documentation/recipes/testing-select-elements.md
     - name: Test Static HTML Pages
       url: /documentation/recipes/test-static-html-pages.md
     - name: Testing on Remote Computers and Mobile Devices

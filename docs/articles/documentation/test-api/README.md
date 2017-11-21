@@ -6,11 +6,16 @@ checked: true
 ---
 # Test API
 
-This section demonstrates how to organize test code and describes the API used to manipulate the webpage and check its state.
+TestCafe allows you to write tests using both JavaScript and TypeScript.
+For more information about writing tests in TypeScript, see [TypeScript Support](typescript-support.md).
 
-It contains the following subsections
+The following topics demonstrate how to organize test code:
 
 * [Test Code Structure](test-code-structure.md)
+* [TypeScript Support](typescript-support.md)
+
+The following topics describe the API used to manipulate the webpage and check its state:
+
 * [Actions](actions/README.md)
 * [Selecting Page Elements](selecting-page-elements/README.md)
 * [Assertions](assertions/README.md)
@@ -21,3 +26,4 @@ It contains the following subsections
 * [Handling Native Dialogs](handling-native-dialogs.md)
 * [Working with \<iframes\>](working-with-iframes.md)
 * [Debugging](debugging.md)
+* [Accessing Console Messages](accessing-console-messages.md)

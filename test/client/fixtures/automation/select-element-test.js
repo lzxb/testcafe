@@ -1,18 +1,20 @@
-var hammerhead   = window.getTestCafeModule('hammerhead');
-var browserUtils = hammerhead.utils.browser;
-var shadowUI     = hammerhead.shadowUI;
+var hammerhead       = window.getTestCafeModule('hammerhead');
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
+var shadowUI         = hammerhead.shadowUI;
 
-var testCafeCore      = window.getTestCafeModule('testCafeCore');
-var parseKeySequence  = testCafeCore.get('./utils/parse-key-sequence');
+var testCafeCore     = window.getTestCafeModule('testCafeCore');
+var parseKeySequence = testCafeCore.get('./utils/parse-key-sequence');
 
 testCafeCore.preventRealEvents();
 
-var testCafeAutomation = window.getTestCafeModule('testCafeAutomation');
-var ClickOptions       = testCafeAutomation.get('../../test-run/commands/options').ClickOptions;
-var PressAutomation    = testCafeAutomation.Press;
-var DblClickAutomation = testCafeAutomation.DblClick;
-var ClickAutomation    = testCafeAutomation.Click;
-var getOffsetOptions   = testCafeAutomation.getOffsetOptions;
+var testCafeAutomation         = window.getTestCafeModule('testCafeAutomation');
+var ClickOptions               = testCafeAutomation.get('../../test-run/commands/options').ClickOptions;
+var PressAutomation            = testCafeAutomation.Press;
+var DblClickAutomation         = testCafeAutomation.DblClick;
+var ClickAutomation            = testCafeAutomation.Click;
+var SelectChildClickAutomation = testCafeAutomation.SelectChildClick;
+var getOffsetOptions           = testCafeAutomation.getOffsetOptions;
 
 var testCafeUI    = window.getTestCafeModule('testCafeUI');
 var selectElement = testCafeUI.get('./select-element');
@@ -26,7 +28,7 @@ $(document).ready(function () {
 
     //utils
     var handlersLog     = [];
-    var isMobileBrowser = browserUtils.isTouchDevice;
+    var isMobileBrowser = featureDetection.isTouchDevice;
 
     var createOption = function (parent, text) {
         return $('<option></option>').text(text)
@@ -413,11 +415,15 @@ $(document).ready(function () {
             meta:  options.meta
         };
 
-        var clickAutomation = new ClickAutomation(el, clickOptions);
+        var clickAutomation = /opt/i.test(el.tagName) ?
+                              new SelectChildClickAutomation(el, clickOptions) :
+                              new ClickAutomation(el, clickOptions);
 
         clickAutomation
             .run()
-            .then(callback);
+            .then(function () {
+                callback();
+            });
     };
 
     QUnit.testDone(function () {

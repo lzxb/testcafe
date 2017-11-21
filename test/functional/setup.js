@@ -22,6 +22,7 @@ const BROWSER_OPENING_TIMEOUT = 90000;
 
 const FUNCTIONAL_TESTS_SELECTOR_TIMEOUT  = 200;
 const FUNCTIONAL_TESTS_ASSERTION_TIMEOUT = 1000;
+const FUNCTIONAL_TESTS_PAGE_LOAD_TIMEOUT = 0;
 
 var envName         = process.env.TESTING_ENVIRONMENT || config.testingEnvironmentNames.localBrowsers;
 var environment     = config.testingEnvironments[envName];
@@ -155,6 +156,7 @@ before(function () {
                 var quarantineMode     = opts && opts.quarantineMode;
                 var selectorTimeout    = opts && opts.selectorTimeout || FUNCTIONAL_TESTS_SELECTOR_TIMEOUT;
                 var assertionTimeout   = opts && opts.assertionTimeout || FUNCTIONAL_TESTS_ASSERTION_TIMEOUT;
+                var pageLoadTimeout    = opts && opts.pageLoadTimeout || FUNCTIONAL_TESTS_PAGE_LOAD_TIMEOUT;
                 var onlyOption         = opts && opts.only;
                 var skipOption         = opts && opts.skip;
                 var screenshotPath     = opts && opts.setScreenshotPath ? '___test-screenshots___' : '';
@@ -163,6 +165,7 @@ before(function () {
                 var appCommand         = opts && opts.appCommand;
                 var appInitDelay       = opts && opts.appInitDelay;
                 var externalProxyHost  = opts && opts.useProxy;
+                var customReporters    = opts && opts.reporters;
 
                 var actualBrowsers = browsersInfo.filter(function (browserInfo) {
                     var only = onlyOption ? onlyOption.indexOf(browserInfo.settings.alias) > -1 : true;
@@ -190,13 +193,10 @@ before(function () {
                         throw err;
                 };
 
-                return runner
-                    .useProxy(externalProxyHost)
-                    .browsers(connections)
-                    .filter(function (test) {
-                        return testName ? test === testName : true;
-                    })
-                    .reporter('json', {
+                if (customReporters)
+                    customReporters.forEach(r => runner.reporter(r.reporter, r.outStream));
+                else {
+                    runner.reporter('json', {
                         write: function (data) {
                             report += data;
                         },
@@ -204,6 +204,14 @@ before(function () {
                         end: function (data) {
                             report += data;
                         }
+                    });
+                }
+
+                return runner
+                    .useProxy(externalProxyHost)
+                    .browsers(connections)
+                    .filter(function (test) {
+                        return testName ? test === testName : true;
                     })
                     .src(fixturePath)
                     .screenshots(screenshotPath, screenshotsOnFails)
@@ -213,9 +221,13 @@ before(function () {
                         quarantineMode:   quarantineMode,
                         selectorTimeout:  selectorTimeout,
                         assertionTimeout: assertionTimeout,
+                        pageLoadTimeout:  pageLoadTimeout,
                         speed:            speed
                     })
                     .then(function () {
+                        if (customReporters)
+                            return;
+
                         var taskReport = JSON.parse(report);
                         var errorDescr = getTestError(taskReport, actualBrowsers);
                         var testReport = taskReport.fixtures.length === 1 ?

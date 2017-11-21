@@ -18,6 +18,12 @@ TestCafe ships with the following reporters:
 
 You can also create a [custom reporter](/testcafe/documentation/extending-testcafe/reporter-plugin/) that will fulfill your needs.
 
+Here are some custom reporters developed by the community.
+
+* [NUnit](https://github.com/AndreyBelym/testcafe-reporter-nunit)
+* [Slack](https://github.com/Shafied/testcafe-reporter-slack)
+* [TeamCity](https://github.com/Soluto/testcafe-reporter-teamcity)
+
 For more information about the reporters, see the following sections.
 
 * [Searching for Reporter Plugins](#searching-for-reporter-plugins)
@@ -38,5 +44,5 @@ You can install reporter packages from npm as you would install any other plugin
 
 When running tests, you can select a reporter to generate test reports.
 You can do this by using the
-[reporter](../command-line-interface.md#-r-name---reporter-name) command line option or the
+[reporter](../command-line-interface.md#-r-namefile---reporter-namefile) command line option or the
 [runner.reporter](../programming-interface/runner.md#reporter) API method.

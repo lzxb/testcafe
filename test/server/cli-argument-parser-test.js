@@ -2,6 +2,7 @@ var expect            = require('chai').expect;
 var path              = require('path');
 var fs                = require('fs');
 var tmp               = require('tmp');
+var find              = require('lodash').find;
 var CliArgumentParser = require('../../lib/cli/argument-parser');
 
 describe('CLI argument parser', function () {
@@ -117,11 +118,40 @@ describe('CLI argument parser', function () {
         });
     });
 
+    describe('Page load timeout', function () {
+        it('Should parse "--page-load-timeout" option as integer value', function () {
+            return parse('--page-load-timeout 1000')
+                .then(function (parser) {
+                    expect(parser.opts.pageLoadTimeout).eql(1000);
+                });
+        });
+
+        it('Should raise an error if the "--page-load-timeout" option value is not an integer', function () {
+            return assertRaisesError('--page-load-timeout yo', 'Page load timeout is expected to be a non-negative number, but it was "yo".');
+        });
+    });
+
     describe('Speed', function () {
-        it('Should parse "--speed" option as a number ', function () {
+        it('Should parse "--speed" option as a number', function () {
             return parse('--speed 0.01')
                 .then(function (parser) {
                     expect(parser.opts.speed).eql(0.01);
+                });
+        });
+    });
+
+    describe('Concurrency', function () {
+        it('Should parse "--concurrency" option as a number', function () {
+            return parse('--concurrency 2')
+                .then(function (parser) {
+                    expect(parser.concurrency).eql(2);
+                });
+        });
+
+        it('Should parse "-c" option as a number', function () {
+            return parse('-c 2')
+                .then(function (parser) {
+                    expect(parser.concurrency).eql(2);
                 });
         });
     });
@@ -289,12 +319,25 @@ describe('CLI argument parser', function () {
             });
     });
 
+    it('Should parse reporters and their output file paths and ensure they exist', function () {
+        var cwd      = process.cwd();
+        var filePath = path.join(tmp.dirSync().name, 'my/reports/report.json');
+
+        return parse('-r list,json:' + filePath)
+            .then(function (parser) {
+                expect(parser.opts.reporters[0].name).eql('list');
+                expect(parser.opts.reporters[0].outFile).to.be.undefined;
+                expect(parser.opts.reporters[1].name).eql('json');
+                expect(parser.opts.reporters[1].outFile).eql(path.resolve(cwd, filePath));
+            });
+    });
+
     it('Should parse command line arguments', function () {
-        return parse('-r list -S -q -e --hostname myhost --proxy localhost:1234 --qr-code --app run-app --speed 0.5 ie test/server/data/file-list/file-1.js')
+        return parse('-r list -S -q -e --hostname myhost --proxy localhost:1234 --qr-code --app run-app --speed 0.5 --debug-on-fail ie test/server/data/file-list/file-1.js')
             .then(function (parser) {
                 expect(parser.browsers).eql(['ie']);
                 expect(parser.src).eql([path.resolve(process.cwd(), 'test/server/data/file-list/file-1.js')]);
-                expect(parser.opts.reporter).eql('list');
+                expect(parser.opts.reporters[0].name).eql('list');
                 expect(parser.opts.hostname).eql('myhost');
                 expect(parser.opts.app).eql('run-app');
                 expect(parser.opts.screenshots).to.be.undefined;
@@ -304,7 +347,48 @@ describe('CLI argument parser', function () {
                 expect(parser.opts.speed).eql(0.5);
                 expect(parser.opts.qrCode).to.be.ok;
                 expect(parser.opts.proxy).to.be.ok;
+                expect(parser.opts.debugOnFail).to.be.ok;
             });
+    });
+
+    it('Should has static CLI', function () {
+        var WARNING          = 'IMPORTANT: Please be sure what you want to change CLI if this test is failing!';
+        var EXPECTED_OPTIONS = [
+            { long: '--version', short: '-v' },
+            { long: '--list-browsers', short: '-b' },
+            { long: '--reporter', short: '-r' },
+            { long: '--screenshots', short: '-s' },
+            { long: '--screenshots-on-fails', short: '-S' },
+            { long: '--quarantine-mode', short: '-q' },
+            { long: '--debug-mode', short: '-d' },
+            { long: '--skip-js-errors', short: '-e' },
+            { long: '--test', short: '-t' },
+            { long: '--test-grep', short: '-T' },
+            { long: '--fixture', short: '-f' },
+            { long: '--fixture-grep', short: '-F' },
+            { long: '--app', short: '-a' },
+            { long: '--concurrency', short: '-c' },
+            { long: '--debug-on-fail' },
+            { long: '--app-init-delay' },
+            { long: '--selector-timeout' },
+            { long: '--assertion-timeout' },
+            { long: '--page-load-timeout' },
+            { long: '--speed' },
+            { long: '--ports' },
+            { long: '--hostname' },
+            { long: '--proxy' },
+            { long: '--qr-code' },
+            { long: '--color' },
+            { long: '--no-color' }
+        ];
+
+        var parser  = new CliArgumentParser('');
+        var options = parser.program.options;
+
+        expect(options.length).eql(EXPECTED_OPTIONS.length, WARNING);
+
+        for (var i = 0; i < EXPECTED_OPTIONS.length; i++)
+            expect(find(options, EXPECTED_OPTIONS[i])).not.eql(void 0, WARNING);
     });
 });
 

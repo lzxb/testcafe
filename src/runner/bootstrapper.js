@@ -1,4 +1,4 @@
-import { flatten } from 'lodash';
+import { isUndefined, filter, flatten, chunk, times } from 'lodash';
 import Promise from 'pinkie';
 import Compiler from '../compiler';
 import BrowserConnection from '../browser/connection';
@@ -14,12 +14,27 @@ export default class Bootstrapper {
     constructor (browserConnectionGateway) {
         this.browserConnectionGateway = browserConnectionGateway;
 
+        this.concurrency  = 1;
         this.sources      = [];
         this.browsers     = [];
+        this.reporters    = [];
         this.filter       = null;
-        this.reporter     = null;
         this.appCommand   = null;
         this.appInitDelay = DEFAULT_APP_INIT_DELAY;
+    }
+
+    static _splitBrowserInfo (browserInfo) {
+        var remotes   = [];
+        var automated = [];
+
+        browserInfo.forEach(browser => {
+            if (browser instanceof BrowserConnection)
+                remotes.push(browser);
+            else
+                automated.push(browser);
+        });
+
+        return { remotes, automated };
     }
 
     async _getBrowserInfo () {
@@ -31,15 +46,23 @@ export default class Bootstrapper {
         return flatten(browserInfo);
     }
 
-    _createConnectionFromBrowserInfo (browserInfo) {
-        if (browserInfo instanceof BrowserConnection)
-            return browserInfo;
+    _createAutomatedConnections (browserInfo) {
+        if (!browserInfo)
+            return [];
 
-        return new BrowserConnection(this.browserConnectionGateway, browserInfo);
+        return browserInfo
+            .map(browser => times(this.concurrency, () => new BrowserConnection(this.browserConnectionGateway, browser)));
     }
 
     async _getBrowserConnections (browserInfo) {
-        var browserConnections = browserInfo.map(browser => this._createConnectionFromBrowserInfo(browser));
+        var { automated, remotes } = Bootstrapper._splitBrowserInfo(browserInfo);
+
+        if (remotes && remotes.length % this.concurrency)
+            throw new GeneralError(MESSAGE.cannotDivideRemotesCountByConcurrency);
+
+        var browserConnections = this._createAutomatedConnections(automated);
+
+        browserConnections = browserConnections.concat(chunk(remotes, this.concurrency));
 
         return await BrowserSet.from(browserConnections);
     }
@@ -65,21 +88,36 @@ export default class Bootstrapper {
         return tests;
     }
 
-    _getReporterPlugin () {
-        var pluginFactory = this.reporter;
+    _getReporterPlugins () {
+        var stdoutReporters = filter(this.reporters, r => isUndefined(r.outStream) || r.outStream === process.stdout);
 
-        if (typeof pluginFactory !== 'function') {
-            try {
-                var alias = this.reporter || 'spec';
+        if (stdoutReporters.length > 1)
+            throw new GeneralError(MESSAGE.multipleStdoutReporters, stdoutReporters.map(r => r.name).join(', '));
 
-                pluginFactory = require('testcafe-reporter-' + alias);
-            }
-            catch (err) {
-                throw new GeneralError(MESSAGE.cantFindReporterForAlias, this.reporter);
-            }
+        if (!this.reporters.length) {
+            this.reporters.push({
+                name:      'spec',
+                outStream: process.stdout
+            });
         }
 
-        return pluginFactory();
+        return this.reporters.map(({ name, outStream }) => {
+            let pluginFactory = name;
+
+            if (typeof pluginFactory !== 'function') {
+                try {
+                    pluginFactory = require('testcafe-reporter-' + name);
+                }
+                catch (err) {
+                    throw new GeneralError(MESSAGE.cantFindReporterForAlias, name);
+                }
+            }
+
+            return {
+                plugin: pluginFactory(),
+                outStream
+            };
+        });
     }
 
     async _startTestedApp () {
@@ -97,7 +135,7 @@ export default class Bootstrapper {
 
     // API
     async createRunnableConfiguration () {
-        var reporterPlugin = this._getReporterPlugin();
+        var reporterPlugins = this._getReporterPlugins();
 
         // NOTE: If a user forgot to specify a browser, but has specified a path to tests, the specified path will be
         // considered as the browser argument, and the tests path argument will have the predefined default value.
@@ -108,6 +146,6 @@ export default class Bootstrapper {
         var testedApp   = await this._startTestedApp();
         var browserSet  = await this._getBrowserConnections(browserInfo);
 
-        return { reporterPlugin, browserSet, tests, testedApp };
+        return { reporterPlugins, browserSet, tests, testedApp };
     }
 }

@@ -1,10 +1,11 @@
-var hammerhead   = window.getTestCafeModule('hammerhead');
-var browserUtils = hammerhead.utils.browser;
+var hammerhead       = window.getTestCafeModule('hammerhead');
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
 
-var testCafeCore      = window.getTestCafeModule('testCafeCore');
-var domUtils          = testCafeCore.get('./utils/dom');
-var textSelection     = testCafeCore.get('./utils/text-selection');
-var position          = testCafeCore.get('./utils/position');
+var testCafeCore  = window.getTestCafeModule('testCafeCore');
+var domUtils      = testCafeCore.get('./utils/dom');
+var textSelection = testCafeCore.get('./utils/text-selection');
+var position      = testCafeCore.get('./utils/position');
 
 testCafeCore.preventRealEvents();
 
@@ -57,8 +58,8 @@ $(document).ready(function () {
             $doc.data(DRAGGABLE_BIND_FLAG, true);
             $doc.data(CURSOR_POSITION_PROPERTY, null);
 
-            $doc.bind(browserUtils.isTouchDevice ? 'touchmove' : 'mousemove', function (e) {
-                var curMousePos = browserUtils.isTouchDevice ? {
+            $doc.bind(featureDetection.isTouchDevice ? 'touchmove' : 'mousemove', function (e) {
+                var curMousePos = featureDetection.isTouchDevice ? {
                     x: e.originalEvent.targetTouches[0].pageX || e.originalEvent.touches[0].pageX,
                     y: e.originalEvent.targetTouches[0].pageY || e.originalEvent.touches[0].pageY
                 } : {
@@ -119,8 +120,8 @@ $(document).ready(function () {
 
         $el.addClass(DRAGGABLE_CLASS);
 
-        $el.bind(browserUtils.isTouchDevice ? 'touchstart' : 'mousedown', function (e) {
-            doc[CURSOR_POSITION_PROPERTY] = browserUtils.isTouchDevice ? {
+        $el.bind(featureDetection.isTouchDevice ? 'touchstart' : 'mousedown', function (e) {
+            doc[CURSOR_POSITION_PROPERTY] = featureDetection.isTouchDevice ? {
                 x: e.originalEvent.targetTouches[0].pageX || e.originalEvent.touches[0].pageX,
                 y: e.originalEvent.targetTouches[0].pageY || e.originalEvent.touches[0].pageY
             } : {
@@ -132,7 +133,7 @@ $(document).ready(function () {
             $(this).data(DRAG_STARTED_PROPERTY, true);
         });
 
-        $el.bind(browserUtils.isTouchDevice ? 'touchend' : 'mouseup', function () {
+        $el.bind(featureDetection.isTouchDevice ? 'touchend' : 'mouseup', function () {
             doc[CURSOR_POSITION_PROPERTY] = null;
             $(this).data(DRAG_STARTED_PROPERTY, false);
         });
@@ -382,7 +383,9 @@ $(document).ready(function () {
 
         window.async.series({
             'Click on textarea': function (callback) {
-                runClickAutomation($textarea[0], { caretPos: 5 }, callback);
+                runClickAutomation($textarea[0], { caretPos: 5 }, function () {
+                    callback();
+                });
             },
 
             'First press down': function (callback) {
@@ -418,7 +421,9 @@ $(document).ready(function () {
 
         window.async.series({
             'Click on textarea': function (callback) {
-                runClickAutomation($textarea[0], { caretPos: 23 }, callback);
+                runClickAutomation($textarea[0], { caretPos: 23 }, function () {
+                    callback();
+                });
             },
 
             'First press up': function (callback) {
@@ -452,7 +457,9 @@ $(document).ready(function () {
 
         window.async.series({
             'Click on textarea': function (callback) {
-                runClickAutomation($textarea[0], { caretPos: 5 }, callback);
+                runClickAutomation($textarea[0], { caretPos: 5 }, function () {
+                    callback();
+                });
             },
 
             'Press home': function (callback) {
@@ -474,7 +481,9 @@ $(document).ready(function () {
 
         window.async.series({
             'Click on textarea': function (callback) {
-                runClickAutomation($textarea[0], { caretPos: 15 }, callback);
+                runClickAutomation($textarea[0], { caretPos: 15 }, function () {
+                    callback();
+                });
             },
 
             'Press end': function (callback) {
@@ -539,14 +548,18 @@ $(document).ready(function () {
 
         window.async.series({
             'First Click': function (callback) {
-                runClickAutomation($input[0], {}, callback);
+                runClickAutomation($input[0], {}, function () {
+                    callback();
+                });
             },
 
             'Second Click': function (callback) {
                 equal(clickCount, 1);
                 bindScrollHandlers();
 
-                runClickAutomation($input[0], {}, callback);
+                runClickAutomation($input[0], {}, function () {
+                    callback();
+                });
             },
 
             'Check assertions': function () {

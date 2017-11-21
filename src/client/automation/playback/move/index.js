@@ -16,15 +16,16 @@ import moveEventSequence from './event-sequence';
 import dragAndDropMoveEventSequence from './event-sequence/drag-and-drop-move';
 import dragAndDropFirstMoveEventSequence from './event-sequence/drag-and-drop-first-move';
 
-var Promise        = hammerhead.Promise;
-var nativeMethods  = hammerhead.nativeMethods;
-var browserUtils   = hammerhead.utils.browser;
-var htmlUtils      = hammerhead.utils.html;
-var urlUtils       = hammerhead.utils.url;
-var eventSimulator = hammerhead.eventSandbox.eventSimulator;
-var messageSandbox = hammerhead.eventSandbox.message;
-var DataTransfer   = hammerhead.eventSandbox.DataTransfer;
-var DragDataStore  = hammerhead.eventSandbox.DragDataStore;
+var Promise          = hammerhead.Promise;
+var nativeMethods    = hammerhead.nativeMethods;
+var browserUtils     = hammerhead.utils.browser;
+var featureDetection = hammerhead.utils.featureDetection;
+var htmlUtils        = hammerhead.utils.html;
+var urlUtils         = hammerhead.utils.url;
+var eventSimulator   = hammerhead.eventSandbox.eventSimulator;
+var messageSandbox   = hammerhead.eventSandbox.message;
+var DataTransfer     = hammerhead.eventSandbox.DataTransfer;
+var DragDataStore    = hammerhead.eventSandbox.DragDataStore;
 
 var positionUtils      = testCafeCore.positionUtils;
 var domUtils           = testCafeCore.domUtils;
@@ -69,7 +70,7 @@ var lastHoveredElement = null;
 
 export default class MoveAutomation {
     constructor (element, moveOptions) {
-        this.touchMode = browserUtils.isTouchDevice;
+        this.touchMode = featureDetection.isTouchDevice;
         this.moveEvent = this.touchMode ? 'touchmove' : 'mousemove';
 
         this.holdLeftButton = moveOptions.holdLeftButton;
@@ -253,8 +254,8 @@ export default class MoveAutomation {
 
         if (domUtils.isHtmlElement(this.element)) {
             return {
-                x: this.offsetX - scroll.left,
-                y: this.offsetY - scroll.top
+                x: Math.floor(this.offsetX - scroll.left),
+                y: Math.floor(this.offsetY - scroll.top)
             };
         }
 
@@ -262,8 +263,8 @@ export default class MoveAutomation {
         var isDocumentBody = this.element.tagName && domUtils.isBodyElement(this.element);
 
         return {
-            x: isDocumentBody ? clientPosition.x + this.offsetX : clientPosition.x + this.offsetX - scroll.left,
-            y: isDocumentBody ? clientPosition.y + this.offsetY : clientPosition.y + this.offsetY - scroll.top
+            x: Math.floor(isDocumentBody ? clientPosition.x + this.offsetX : clientPosition.x + this.offsetX - scroll.left),
+            y: Math.floor(isDocumentBody ? clientPosition.y + this.offsetY : clientPosition.y + this.offsetY - scroll.top)
         };
     }
 
@@ -425,7 +426,7 @@ export default class MoveAutomation {
 
                 var draggable = findDraggableElement(this.dragElement);
 
-                if (draggable && browserUtils.hasDataTransfer) {
+                if (draggable && featureDetection.hasDataTransfer) {
                     this.dragAndDropState.enabled      = true;
                     this.dragElement                   = draggable;
                     this.dragAndDropState.element      = this.dragElement;

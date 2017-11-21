@@ -45,7 +45,9 @@ createTestCafe('localhost', 1337, 1338)
 * [reporter](#reporter)
     * [Specifying the Reporter](#specifying-the-reporter)
     * [Saving the Report to a File](#saving-the-report-to-a-file)
+    * [Using Multiple Reporters](#using-multiple-reporters)
     * [Implementing a Custom Stream](#implementing-a-custom-stream)
+* [concurrency](#concurrency)
 * [startApp](#startapp)
 * [useProxy](#useproxy)
 * [run](#run)
@@ -119,9 +121,9 @@ The `browser` parameter can be any of the following objects, or an `Array` of th
 
 Parameter Type                                                                                        | Description                            | Browser Type
 ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------
-String                                                                                                | The browser alias that differs for different browser types. For details, see [Browser Support](../common-concepts/browser-support.md).                            | [Local browsers](../common-concepts/browser-support.md#locally-installed-browsers), [cloud browsers](../common-concepts/browser-support.md#browsers-in-cloud-testing-services) and [browsers accessed through *browser provider plugins*](../common-concepts/browser-support.md#nonconventional-browsers).                                                                 |
- `{path: String, cmd: String}`                                                                        | The path to the browser executable (`path`) and command line parameters (`cmd`). The `cmd` property is optional.                                                     | [Local](../common-concepts/browser-support.md#locally-installed-browsers) and [portable](../common-concepts/browser-support.md#portable-browsers) browsers
-[BrowserConnection](browserconnection.md)                                                            | The remote browser connection.                                                                                                                                        | [Remote browsers](../common-concepts/browser-support.md#browsers-on-remote-devices)
+String                                                                                                | The browser alias that differs for different browser types. For details, see [Browser Support](../common-concepts/browsers/browser-support.md).                            | [Local browsers](../common-concepts/browsers/browser-support.md#locally-installed-browsers), [cloud browsers](../common-concepts/browsers/browser-support.md#browsers-in-cloud-testing-services) and [browsers accessed through *browser provider plugins*](../common-concepts/browsers/browser-support.md#nonconventional-browsers).                                                                 |
+ `{path: String, cmd: String}`                                                                        | The path to the browser executable (`path`) and command line parameters (`cmd`). The `cmd` property is optional.                                                     | [Local](../common-concepts/browsers/browser-support.md#locally-installed-browsers) and [portable](../common-concepts/browsers/browser-support.md#portable-browsers) browsers
+[BrowserConnection](browserconnection.md)                                                            | The remote browser connection.                                                                                                                                        | [Remote browsers](../common-concepts/browsers/browser-support.md#browsers-on-remote-devices)
 
 You are free to mix different types of objects in one function call. The `browsers` function concatenates the settings when called several times.
 
@@ -139,10 +141,18 @@ runner.browsers(['safari', 'chrome']);
 runner.browsers('saucelabs:Chrome@52.0:Windows 8.1');
 ```
 
-#### Specifying the Path to the Browser Executable
+* using [headless mode](../common-concepts/browsers/testing-in-headless-mode.md)
 
 ```js
-runner.browsers('C:\\Program Files\\Internet Explorer\\iexplore.exe');
+runner.browsers('chrome:headless');
+```
+
+#### Specifying the Path to the Browser Executable
+
+Use the `path:` prefix. If the path contains spaces, surround it with backticks.
+
+```js
+runner.browsers('path:`C:\\Program Files\\Internet Explorer\\iexplore.exe`');
 ```
 
 #### Specifying the Path with Command Line Parameters
@@ -225,6 +235,8 @@ Parameter                | Type                        | Description            
 `name`                   | String                      | The name of the [reporter](../common-concepts/reporters.md) to use.
 `outStream`&#160;*(optional)* | Writable Stream implementer | The stream to which the report will be written. | `stdout`
 
+To use multiple reporters, call this method several times with different reporter names. Note that only one reporter can write to `stdout`.
+
 #### Specifying the Reporter
 
 ```js
@@ -237,7 +249,25 @@ runner.reporter('minimal');
 const stream = fs.createWriteStream('report.xml');
 
 runner
+    .src('tests/sample-fixture.js')
+    .browsers('chrome')
     .reporter('xunit', stream)
+    .run()
+    .then(failedCount => {
+        stream.end();
+    });
+```
+
+#### Using Multiple Reporters
+
+```js
+const stream = fs.createWriteStream('report.json');
+
+runner
+    .src('tests/sample-fixture.js')
+    .browsers('chrome')
+    .reporter('json', stream)
+    .reporter('list')
     .run()
     .then(failedCount => {
         stream.end();
@@ -259,6 +289,33 @@ runner.reporter('json', stream);
 ```
 
 You can also build your own reporter. Use a [dedicated Yeoman generator](https://github.com/DevExpress/generator-testcafe-reporter) to scaffold out a [reporter plugin](../../extending-testcafe/reporter-plugin/README.md).
+
+### concurrency
+
+Specifies that tests should run concurrently.
+
+```text
+concurrency(n) → this
+```
+
+TestCafe will open `n` instances of the same browser thus creating a pool of browser instances.
+Tests will run concurrently against this pool, i.e. each test will run in the first free instance.
+
+The `concurrency` function takes the following parameters.
+
+Parameter | Type    | Description
+--------- | ------- | --------
+`n`  | Number | The number of browser instances that will be invoked.
+
+To learn more about concurrent test execution, see [Concurrent Test Execution](../common-concepts/concurrent-test-execution.md).
+
+The following example shows how to run tests in three Chrome instances.
+
+```js
+runner
+    .browsers('chrome')
+    .concurrency(3);
+```
 
 ### startApp
 
@@ -333,8 +390,10 @@ Parameter         | Type    | Description                                       
 `quarantineMode`  | Boolean | Defines whether to enable the [quarantine mode](#quarantine-mode).                                                                                                                    | `false`
 `selectorTimeout` | Number  | Specifies the amount of time, in milliseconds, within which [selectors](../../test-api/selecting-page-elements/selectors.md) make attempts to obtain a node to be returned. See [Selector Timeout](../../test-api/selecting-page-elements/selectors.md#selector-timeout). | `10000`
 `assertionTimeout` | Number  | Specifies the amount of time, in milliseconds, within which TestCafe makes attempts  to successfully execute an [assertion](../../test-api/assertions/README.md) if [a selector property](../../test-api/selecting-page-elements/selectors.md#define-assertion-actual-value) or a [client function](../../test-api/obtaining-data-from-the-client.md) was passed as an actual value. See [Smart Assertion Query Mechanism](../../test-api/assertions/README.md#smart-assertion-query-mechanism). | `3000`
+`pageLoadTimeout` | Number  | Specifies the amount of time, in milliseconds, passed after the `DOMContentLoaded` event, within which TestCafe waits for the `window.load` event to fire. After the timeout passes or the `window.load` event is raised (whichever happens first), TestCafe starts the test. You can set this timeout to `0` to skip waiting for `window.load`. | `3000`
 `speed`           | Number  | Specifies the speed of test execution. Should be a number between `1` (the fastest) and `0.01` (the slowest). If speed is also specified for an [individual action](../../test-api/actions/action-options.md#basic-action-options), the action speed setting overrides test speed. | `1`
-`debugMode`       | Boolean | Specifies if tests run in the debug mode. If this option is enabled, test execution is paused before the first action or assertion allowing you to invoke the developer tools and debug. | `false`
+`debugMode`       | Boolean | Specifies if tests run in the debug mode. If this option is enabled, test execution is paused before the first action or assertion allowing you to invoke the developer tools and debug. In the debug mode, you can execute the test step-by-step to reproduce its incorrect behavior. You can also use the **Unlock page** switch in the footer to unlock the tested page and interact with its elements. | `false`
+`debugOnFail`     | Boolean | Specifies whether to enter the debug mode when a test fails. If enabled, the test is paused at the moment it fails, so that you can explore the tested page to determine the cause of the fail. | `false`
 
 After all tests are finished, call the [testcafe.close](testcafe.md#close) function to stop the TestCafe server.
 
@@ -354,6 +413,7 @@ createTestCafe('localhost', 1337, 1338)
             quarantineMode: true,
             selectorTimeout: 50000,
             assertionTimeout: 7000,
+            pageLoadTimeout: 8000,
             speed: 0.1
         });
     })
